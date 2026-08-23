@@ -1,4 +1,23 @@
+from .audit import AuditLog
 from .auth import LoginToken, Session, User
+from .job import (
+    JobDescription,
+    JobSource,
+    JobState,
+    Requirement,
+    RequirementKind,
+    RequirementNecessity,
+)
+from .match import (
+    Claim,
+    ClaimEvidence,
+    ClaimFinding,
+    LLMCall,
+    MatchRun,
+    MatchRunState,
+    MatchType,
+    PromptVersion,
+)
 from .resume import (
     Extraction,
     FailureCode,
@@ -12,11 +31,26 @@ from .resume import (
 )
 
 __all__ = [
+    "AuditLog",
+    "Claim",
+    "ClaimEvidence",
+    "ClaimFinding",
     "Extraction",
     "FailureCode",
     "Finding",
+    "JobDescription",
+    "JobSource",
+    "JobState",
+    "LLMCall",
     "LoginToken",
+    "MatchRun",
+    "MatchRunState",
+    "MatchType",
     "ProcessingState",
+    "PromptVersion",
+    "Requirement",
+    "RequirementKind",
+    "RequirementNecessity",
     "Resume",
     "ResumePage",
     "ResumeSkill",

@@ -36,6 +36,23 @@ class Settings(BaseSettings):
     # forgets to set this fails closed rather than emailing itself.
     environment: str = "production"
 
+    # Phase 3 LLM settings contract (sections 7.1 and 12.2)
+    llm_provider: str = "anthropic"
+    llm_model: str = "claude-sonnet-5"
+    llm_fallback_model: str = "claude-opus-5"
+    llm_api_key: str | None = None
+    llm_base_url: str | None = None
+    llm_inference_geo: str | None = None
+    llm_timeout_seconds: float = 60.0
+    llm_max_retries: int = 1
+    llm_temperature: float = 0.0
+    llm_max_output_tokens_extraction: int = 4096
+    llm_max_output_tokens_matching: int = 8192
+    llm_cache_ttl: str = "5m"
+    llm_data_processing_mode: str = "disabled"
+    llm_privacy_attestation_id: str | None = None
+    llm_privacy_verified_at: str | None = None
+
     @property
     def expose_login_links(self) -> bool:
         return self.environment == "development"

@@ -1,7 +1,17 @@
 import uuid
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base, Identified, Timestamped
@@ -57,6 +67,9 @@ class Resume(Identified, Timestamped, Base):
     page_count: Mapped[int | None] = mapped_column(Integer, default=None)
     state: Mapped[ProcessingState] = mapped_column(String(16), default=ProcessingState.UPLOADED)
     failure_code: Mapped[FailureCode | None] = mapped_column(String(32), default=None)
+    is_fixture: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
 
     user: Mapped[User] = relationship()
 
