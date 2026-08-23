@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Counterfactual Skill Gap Analysis | CareerLayer</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#161d1e",
+                    "secondary-fixed": "#d0e6eb",
+                    "surface-dim": "#d5dbdd",
+                    "surface-container-high": "#e3e9eb",
+                    "inverse-surface": "#2b3133",
+                    "outline-variant": "#bec8cd",
+                    "on-tertiary-container": "#fafaff",
+                    "primary-fixed-dim": "#7dd2f1",
+                    "surface-tint": "#006780",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#3f484d",
+                    "on-primary-container": "#f5fbff",
+                    "tertiary-fixed-dim": "#b0c9e8",
+                    "on-background": "#161d1e",
+                    "surface-bright": "#f4fafc",
+                    "on-primary-fixed": "#001f29",
+                    "primary-fixed": "#b9eaff",
+                    "background": "#f4fafc",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-container": "#5e7592",
+                    "surface": "#f4fafc",
+                    "outline": "#6f797d",
+                    "on-secondary-fixed-variant": "#364a4e",
+                    "secondary": "#4e6266",
+                    "tertiary-fixed": "#d1e4ff",
+                    "primary": "#00637c",
+                    "secondary-fixed-dim": "#b5cacf",
+                    "inverse-primary": "#7dd2f1",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#54686c",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#314863",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#0a1e22",
+                    "surface-container": "#e9eff1",
+                    "inverse-on-surface": "#ecf2f4",
+                    "error-container": "#ffdad6",
+                    "surface-variant": "#dde3e5",
+                    "surface-container-highest": "#dde3e5",
+                    "on-tertiary-fixed": "#011d35",
+                    "on-secondary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#d0e6eb",
+                    "tertiary": "#455c78",
+                    "on-primary-fixed-variant": "#004d61",
+                    "primary-container": "#167d9a",
+                    "surface-container-low": "#eff5f7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "unit": "8px",
+                    "margin-desktop": "48px",
+                    "container-max": "1280px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Sora"],
+                    "label-md": ["Sora"],
+                    "headline-md": ["Sora"],
+                    "headline-lg": ["Sora"],
+                    "caption": ["Sora"],
+                    "display": ["Sora"],
+                    "body-lg": ["Sora"],
+                    "body-md": ["Sora"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                    "label-md": ["14px", { "lineHeight": "1.0", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                    "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                    "caption": ["12px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                    "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Custom Styles for Interactive Chart & Fluid UI */
+        .glass-panel {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
+            backdrop-filter: blur(12px);
+        }
+        
+        .donut-ring {
+            transition: stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+        }
+
+        .skill-toggle-input:checked + .skill-toggle-bg {
+            background-color: theme('colors.primary');
+        }
+        
+        .skill-toggle-input:checked + .skill-toggle-bg .skill-toggle-dot {
+            transform: translateX(100%);
+        }
+
+        .ambient-glow {
+            box-shadow: 0 4px 32px rgba(16, 42, 67, 0.06);
+        }
+        
+        /* Flowing divider gradient */
+        .flowing-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, theme('colors.outline-variant'), transparent);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md flex h-screen overflow-hidden antialiased">
+<!-- SideNavBar (Desktop) -->
+<nav class="bg-surface-container-lowest border-r border-outline-variant/30 h-full w-64 fixed left-0 top-0 transition-all duration-200 ease-in-out hidden md:flex flex-col p-4 z-50">
+<div class="mb-8 px-4 flex flex-col gap-1">
+<span class="font-display text-headline-md text-primary">CareerLayer</span>
+<span class="font-caption text-caption text-on-surface-variant">Career Intelligence</span>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="flex flex-col gap-2">
+<!-- Inactive -->
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-md text-label-md">Resume</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">travel_explore</span>
+<span class="font-label-md text-label-md">Job Matches</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">work</span>
+<span class="font-label-md text-label-md">Jobs</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">assignment_turned_in</span>
+<span class="font-label-md text-label-md">Applications</span>
+</a>
+</li>
+<!-- Active -->
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container font-semibold border-l-4 border-primary transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="font-label-md text-label-md">Skill Gaps</span>
+</a>
+</li>
+<!-- Inactive -->
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-label-md text-label-md">AI Assistant</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 w-full h-full relative">
+<!-- TopNavBar -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm docked full-width top-0 sticky z-40 flex justify-between items-center w-full px-6 py-3 transition-all backdrop-blur-xl duration-300">
+<div class="flex items-center gap-4">
+<span class="md:hidden font-display text-headline-md text-primary">CareerLayer</span>
+</div>
+<div class="flex items-center gap-4 text-primary">
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors flex items-center">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto w-full">
+<div class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12 flex flex-col gap-8 pb-32">
+<!-- Page Header -->
+<div class="flex flex-col gap-2">
+<h1 class="font-display text-display text-on-surface hidden md:block">What could improve your match?</h1>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface md:hidden">What could improve your match?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                        Simulate how acquiring specific high-demand skills impacts your compatibility with target roles. Estimated impact based on the current matching model.
+                    </p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Left: Main Visualization (7 cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-surface-container-high ambient-glow p-6 md:p-10 flex flex-col items-center justify-center relative overflow-hidden glass-panel min-h-[400px]">
+<!-- Decorative Background Blob -->
+<div class="absolute -top-24 -left-24 w-64 h-64 bg-primary-fixed opacity-30 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute -bottom-24 -right-24 w-80 h-80 bg-secondary-fixed opacity-30 rounded-full blur-3xl pointer-events-none"></div>
+<!-- Donut Chart Container -->
+<div class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 120 120">
+<!-- Background Track -->
+<circle class="stroke-surface-container-highest" cx="60" cy="60" fill="none" r="50" stroke-width="8"></circle>
+<!-- Current Score (78%) -->
+<circle class="stroke-primary donut-ring" cx="60" cy="60" fill="none" id="currentScoreCircle" r="50" stroke-dasharray="245 314.159" stroke-linecap="round" stroke-width="8"></circle>
+<!-- Potential Addition (Dynamic) -->
+<circle class="stroke-primary-container donut-ring opacity-80" cx="60" cy="60" fill="none" id="potentialScoreCircle" r="50" stroke-dasharray="0 314.159" stroke-dashoffset="-245" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<!-- Center Text -->
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-caption text-caption text-on-surface-variant mb-1 uppercase tracking-wider">Projected Match</span>
+<div class="flex items-baseline gap-1">
+<span class="font-display text-display text-primary" id="scoreDisplay">78</span>
+<span class="font-headline-md text-headline-md text-primary">%</span>
+</div>
+<span class="font-label-md text-label-md text-secondary mt-2 bg-secondary-container/50 px-3 py-1 rounded-full">Base: 78%</span>
+</div>
+</div>
+<!-- Result Text -->
+<div class="mt-8 text-center min-h-[48px]">
+<p class="font-body-lg text-body-lg text-on-surface transition-opacity duration-300" id="resultText">
+                                Select skills to simulate potential impact.
+                            </p>
+</div>
+</div>
+<!-- Right: Interactive Controls (5 cols) -->
+<div class="lg:col-span-5 flex flex-col gap-4">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">High-Impact Additions</h3>
+<!-- Skill Toggle 1 -->
+<label class="group flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-surface-container shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">cloud</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">AWS</span>
+<span class="font-caption text-caption text-primary-container font-medium">+8% impact</span>
+</div>
+</div>
+<div class="relative inline-flex items-center">
+<input class="sr-only skill-toggle-input" data-impact="8" data-skill="AWS" type="checkbox"/>
+<div class="skill-toggle-bg w-11 h-6 bg-surface-variant rounded-full transition-colors flex items-center px-1">
+<div class="skill-toggle-dot w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300"></div>
+</div>
+</div>
+</label>
+<!-- Skill Toggle 2 -->
+<label class="group flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-surface-container shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">grid_view</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Kubernetes</span>
+<span class="font-caption text-caption text-primary-container font-medium">+4% impact</span>
+</div>
+</div>
+<div class="relative inline-flex items-center">
+<input class="sr-only skill-toggle-input" data-impact="4" data-skill="Kubernetes" type="checkbox"/>
+<div class="skill-toggle-bg w-11 h-6 bg-surface-variant rounded-full transition-colors flex items-center px-1">
+<div class="skill-toggle-dot w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300"></div>
+</div>
+</div>
+</label>
+<!-- Skill Toggle 3 -->
+<label class="group flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-surface-container shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">stream</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Kafka</span>
+<span class="font-caption text-caption text-primary-container font-medium">+2% impact</span>
+</div>
+</div>
+<div class="relative inline-flex items-center">
+<input class="sr-only skill-toggle-input" data-impact="2" data-skill="Kafka" type="checkbox"/>
+<div class="skill-toggle-bg w-11 h-6 bg-surface-variant rounded-full transition-colors flex items-center px-1">
+<div class="skill-toggle-dot w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-300"></div>
+</div>
+</div>
+</label>
+<div class="mt-4 p-4 bg-surface-container-low rounded-xl border border-surface-container-high">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5">info</span>
+<p class="font-caption text-caption text-on-surface-variant">
+                                    These recommendations are dynamically generated based on current market demand overlapping with your existing profile strengths.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Script for Interactive Chart Logic -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const baseScore = 78;
+            const maxScore = 100;
+            const radius = 50;
+            const circumference = 2 * Math.PI * radius; // ~314.159
+            
+            const currentCircle = document.getElementById('currentScoreCircle');
+            const potentialCircle = document.getElementById('potentialScoreCircle');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const resultText = document.getElementById('resultText');
+            const toggles = document.querySelectorAll('.skill-toggle-input');
+
+            // Initialize base circle
+            const baseDash = (baseScore / maxScore) * circumference;
+            currentCircle.style.strokeDasharray = `${baseDash} ${circumference}`;
+
+            function updateChart() {
+                let addedImpact = 0;
+                let selectedSkills = [];
+
+                toggles.forEach(toggle => {
+                    if (toggle.checked) {
+                        addedImpact += parseInt(toggle.dataset.impact);
+                        selectedSkills.push(toggle.dataset.skill);
+                    }
+                });
+
+                const newScore = Math.min(baseScore + addedImpact, maxScore);
+                
+                // Animate Number
+                animateValue(scoreDisplay, parseInt(scoreDisplay.innerText), newScore, 500);
+
+                // Update Potential Circle
+                if (addedImpact > 0) {
+                    const potentialDash = (addedImpact / maxScore) * circumference;
+                    potentialCircle.style.strokeDasharray = `${potentialDash} ${circumference}`;
+                    // Offset starts where base circle ends
+                    potentialCircle.style.strokeDashoffset = -baseDash;
+                    
+                    // Update Text
+                    const skillString = selectedSkills.join(' + ');
+                    resultText.innerHTML = `With <span class="font-semibold text-primary">${skillString}</span>: <span class="font-bold">${newScore}%</span>`;
+                } else {
+                    potentialCircle.style.strokeDasharray = `0 ${circumference}`;
+                    resultText.innerHTML = 'Select skills to simulate potential impact.';
+                }
+            }
+
+            // Simple number animation
+            function animateValue(obj, start, end, duration) {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    obj.innerHTML = Math.floor(progress * (end - start) + start);
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            toggles.forEach(toggle => {
+                toggle.addEventListener('change', updateChart);
+            });
+        });
+    </script>
+</body></html>

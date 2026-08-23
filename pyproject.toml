@@ -1,0 +1,39 @@
+# Lint and type-check configuration shared by every Python package in the monorepo.
+# There is no root package: this file exists only so ruff and mypy read one set of
+# rules regardless of which subdirectory they are invoked from.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "ARG", "PTH", "RUF"]
+
+[tool.ruff.lint.isort]
+# Invoked from the repo root, ruff cannot infer that these are first-party from the
+# directory layout, and would sort them as third-party imports.
+known-first-party = ["careerlayer_api", "careerlayer", "careerlayer_worker"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/alembic/env.py" = ["ARG"]
+# Section 3 of the build specification names these exception types directly
+# (ExtractionFailed, OcrUnavailable, SchemaViolation). Renaming them to satisfy pep8's
+# Error suffix would put the code and the specification out of step over a suffix.
+"packages/integrity/careerlayer/integrity/errors.py" = ["N818"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# PyMuPDF and pytesseract ship partial or absent annotations. Excluding their calls from
+# the untyped-call rule keeps strict mode meaningful for our own code instead of forcing a
+# wrapper layer whose only job would be to satisfy the type checker.
+untyped_calls_exclude = ["pymupdf", "pytesseract"]
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*", "pytesseract.*"]
+ignore_missing_imports = true
