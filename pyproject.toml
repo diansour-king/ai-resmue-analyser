@@ -12,7 +12,7 @@ select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "ARG", "PTH", 
 [tool.ruff.lint.isort]
 # Invoked from the repo root, ruff cannot infer that these are first-party from the
 # directory layout, and would sort them as third-party imports.
-known-first-party = ["careerlayer_api", "careerlayer", "careerlayer_worker"]
+known-first-party = ["careerlayer", "careerlayer_api", "careerlayer_worker"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/alembic/env.py" = ["ARG"]
@@ -20,6 +20,19 @@ known-first-party = ["careerlayer_api", "careerlayer", "careerlayer_worker"]
 # (ExtractionFailed, OcrUnavailable, SchemaViolation). Renaming them to satisfy pep8's
 # Error suffix would put the code and the specification out of step over a suffix.
 "packages/integrity/careerlayer/integrity/errors.py" = ["N818"]
+# A pytest fixture requested purely for its side effect - signing a client in, replacing the
+# queue - is an unused argument by ruff's reading and a required one by pytest's. Renaming it
+# to satisfy the linter would stop the fixture resolving.
+"*/tests/*" = ["ARG001"]
+# FastAPI's dependency injection is expressed as a call in the default: File(...), Depends().
+# The rule is aimed at mutable defaults; here it forbids the framework's only documented idiom.
+"api/careerlayer_api/routes/*.py" = ["B008"]
+# Alembic writes these files; they are generated artefacts, not hand-authored source.
+"api/alembic/versions/*.py" = ["E501"]
+# Same reasoning as the integrity package: section 3 of the build specification names the
+# exception types, and a pep8 suffix is not worth diverging from the specified contract.
+"api/careerlayer_api/pdf_intake.py" = ["N818"]
+"api/careerlayer_api/storage.py" = ["N818"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

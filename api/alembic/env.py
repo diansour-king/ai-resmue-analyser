@@ -1,15 +1,17 @@
 import asyncio
 
 from alembic import context
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from careerlayer_api import models  # noqa: F401  imported so autogenerate sees the tables
 from careerlayer_api.db import Base
 from careerlayer_api.settings import get_settings
 
 target_metadata = Base.metadata
 
 
-def run_migrations(connection: object) -> None:
+def run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()

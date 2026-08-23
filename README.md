@@ -17,7 +17,7 @@ measured cost per document in phase 5.
 | --- | --- | --- |
 | 0 | Repository skeleton, local stack, health endpoint | done |
 | 1 | Integrity CLI: dual extraction, detectors D1-D6 | done |
-| 2 | Upload, extract, document viewer | not started |
+| 2 | Upload, extract, document viewer | done |
 | 3 | Job matching with evidence-linked claims | not started |
 | 4 | Impact canary, eval corpus, CI gate | not started |
 | 5 | Observability, rate limits, deploy | not started |
@@ -41,9 +41,11 @@ means all three dependencies answered; a 503 names the one that did not.
 | `make dev` | Build and start the stack |
 | `make down` | Stop it |
 | `make logs` | Follow the API log |
-| `make test` | Both suites below |
+| `make test` | All four suites below |
 | `make test-api` | API tests, inside the container |
 | `make test-integrity` | Integrity package tests, on the host |
+| `make test-worker` | Worker pipeline tests, on the host |
+| `make test-web` | Frontend tests |
 | `make lint` | ruff, ruff format, mypy |
 | `make migrate` | Apply Alembic migrations |
 | `make eval` | Phase 4 |
@@ -62,6 +64,22 @@ python -m careerlayer.integrity resume.pdf --json
 ```
 
 See `packages/integrity/README.md` for the detector list and the thresholds.
+
+## How a resume moves through the system
+
+```
+upload  ->  validate by parsing  ->  store the PDF  ->  queue
+                                                          |
+worker: extract spans -> render pages at 200 DPI -> OCR -> D1-D6 -> persist
+                                                          |
+evidence viewer: the rendered page, with findings drawn on their own rectangles
+```
+
+The HTTP request stores the file and returns. Rendering and OCR take seconds to minutes and run
+in the worker, which is the only container carrying Tesseract.
+
+Coordinates cross the API in PDF points and the viewer computes its own scale; see
+`docs/decisions/0006-coordinates-cross-the-api-in-pdf-points.md`.
 
 ## Safety constraints
 

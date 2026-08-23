@@ -69,6 +69,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET}
+      ENVIRONMENT: ${ENVIRONMENT}
     ports:
       - "${API_PORT}:8000"
     volumes:
@@ -78,6 +83,46 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio-bucket:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      # A separate image from the API on purpose: this is the only service that needs
+      # Tesseract, and the API has no reason to carry an OCR engine to write a row.
+      context: ..
+      dockerfile: worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET}
+      ENVIRONMENT: ${ENVIRONMENT}
+    volumes:
+      - ../worker:/srv/worker
+      - ../packages/integrity:/srv/packages/integrity
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-bucket:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    environment:
+      # Server-side only. The browser talks to this container and nothing else, which is what
+      # keeps the API host, the database and the object store off the public network.
+      API_ORIGIN: http://api:8000
+    ports:
+      - "${WEB_PORT}:3000"
+    depends_on:
+      - api
 
 volumes:
   postgres-data:

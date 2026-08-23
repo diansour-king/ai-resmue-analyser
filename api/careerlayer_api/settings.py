@@ -14,6 +14,32 @@ class Settings(BaseSettings):
     # whoever is on call to the wrong service.
     dependency_probe_timeout: float = 2.0
 
+    s3_endpoint_url: str = "http://minio:9000"
+    s3_access_key: str = "careerlayer"
+    s3_secret_key: str = "careerlayer-dev-secret"
+    s3_bucket: str = "careerlayer-resumes"
+    s3_region: str = "us-east-1"
+
+    session_cookie_name: str = "careerlayer_session"
+    session_ttl_hours: int = 24 * 14
+    login_token_ttl_minutes: int = 15
+
+    # Both caps are enforced before the file is stored or parsed further. A 20MB, 40-page
+    # ceiling covers every real resume and bounds what one request can cost the worker.
+    max_upload_bytes: int = 20 * 1024 * 1024
+    max_page_count: int = 40
+
+    render_dpi: int = 200
+
+    # In development the sign-in link is returned in the response and written to the log so
+    # the flow works with no mail server. Any other value withholds it, and a deployment that
+    # forgets to set this fails closed rather than emailing itself.
+    environment: str = "production"
+
+    @property
+    def expose_login_links(self) -> bool:
+        return self.environment == "development"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-on-background font-body antialiased;
+  }
+}
+
+@layer components {
+  /* Named in the Stitch export but never defined there; reconstructed from the prose in
+     design/stitch_careerlayer_ai_intelligence/careerlayer_2/DESIGN.md. */
+  .ocean-shadow {
+    box-shadow: 0 4px 20px rgba(16, 42, 67, 0.06);
+  }
+  .flowing-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      theme("colors.outline-variant") 20%,
+      theme("colors.outline-variant") 80%,
+      transparent 100%
+    );
+  }
+  .glass-panel {
+    backdrop-filter: blur(12px);
+    background-color: rgb(255 255 255 / 0.8);
+  }
+}

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "careerlayer-worker"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = [
+  "careerlayer-api",
+  "careerlayer-integrity",
+  "rq>=1.16",
+  "redis>=5.2",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.2",
+  "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["careerlayer_worker"]

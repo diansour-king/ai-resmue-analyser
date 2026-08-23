@@ -13,22 +13,35 @@ down:
 	$(COMPOSE) down
 
 logs:
-	$(COMPOSE) logs -f api
+	$(COMPOSE) logs -f api worker
 
-test: test-api test-integrity
+test: test-api test-integrity test-worker test-web
 
 test-api:
 	$(COMPOSE) exec api pytest /srv/api
 
-# Runs on the host rather than in the api container: the integrity package needs the
-# tesseract binary, which that image does not carry until the worker is built in phase 2.
+# Each suite is a separate pytest run. All three have a directory called tests, so a single
+# invocation from the repo root cannot tell their conftest modules apart.
 test-integrity:
 	pytest packages/integrity/tests
 
-lint:
+test-worker:
+	pytest worker/tests
+
+lint: lint-python lint-web
+
+lint-python:
 	ruff check .
 	ruff format --check .
-	mypy api/careerlayer_api packages/integrity
+	mypy api/careerlayer_api api/tests
+	mypy packages/integrity
+	mypy worker/careerlayer_worker worker/tests
+
+lint-web:
+	cd web && npm run lint && npm run typecheck
+
+test-web:
+	cd web && npm test
 
 migrate:
 	$(COMPOSE) exec api alembic -c /srv/api/alembic.ini upgrade head
