@@ -21,6 +21,10 @@ def original_key(resume_id: str) -> str:
     return f"resumes/{resume_id}/original.pdf"
 
 
+def job_original_key(job_id: str) -> str:
+    return f"jobs/{job_id}/original.pdf"
+
+
 def page_render_key(resume_id: str, page_number: int) -> str:
     return f"resumes/{resume_id}/pages/{page_number:04d}.png"
 

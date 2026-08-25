@@ -32,6 +32,7 @@ known-first-party = ["careerlayer", "careerlayer_api", "careerlayer_worker"]
 # Same reasoning as the integrity package: section 3 of the build specification names the
 # exception types, and a pep8 suffix is not worth diverging from the specified contract.
 "api/careerlayer_api/pdf_intake.py" = ["N818"]
+"api/careerlayer_api/jd_intake.py" = ["N818"]
 "api/careerlayer_api/storage.py" = ["N818"]
 
 [tool.pytest.ini_options]

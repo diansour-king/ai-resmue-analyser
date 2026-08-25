@@ -91,3 +91,51 @@ class UploadAccepted(BaseModel):
     filename: str
     page_count: int
     duplicate_of_existing: bool
+
+
+class JobCreate(BaseModel):
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+    raw_text: str
+    is_fixture: bool = False
+
+
+class JobAccepted(BaseModel):
+    job_description_id: str
+    state: str
+    source: str
+    title: str | None = None
+    company: str | None = None
+    sha256: str
+    duplicate_of_existing: bool = False
+
+
+class JobSummary(BaseModel):
+    job_description_id: str
+    title: str | None
+    company: str | None
+    location: str | None
+    source: str
+    state: str
+    created_at: str
+
+
+class JobDescriptionOut(BaseModel):
+    job_description_id: str
+    title: str | None
+    company: str | None
+    location: str | None
+    source: str
+    state: str
+    raw_text: str
+    normalized_text: str
+    sha256: str
+    page_count: int | None
+    failure_code: str | None
+    extractor_version: str | None
+    is_fixture: bool
+    created_at: str
+    updated_at: str
+    requirement_count: int = 0
+    findings_by_severity: SeverityCounts = Field(default_factory=SeverityCounts)
