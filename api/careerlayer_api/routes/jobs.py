@@ -16,7 +16,14 @@ from ..jd_intake import (
 from ..models import AuditLog, JobDescription, JobSource, JobState, Requirement
 from ..observability import log
 from ..queue import enqueue_job_processing
-from ..schemas import JobAccepted, JobDescriptionOut, JobSummary, SeverityCounts
+from ..schemas import (
+    JobAccepted,
+    JobDescriptionOut,
+    JobSummary,
+    RequirementEvidenceOut,
+    RequirementOut,
+    SeverityCounts,
+)
 from ..settings import get_settings
 
 router = APIRouter(prefix="/v1/jobs", tags=["jobs"])
@@ -387,3 +394,77 @@ async def get_job(job_id: str, user: CurrentUser, session: DbSession) -> JobDesc
         requirement_count=req_count,
         findings_by_severity=SeverityCounts(),
     )
+
+
+@router.get("/{job_id}/requirements", response_model=list[RequirementOut])
+async def get_job_requirements(
+    job_id: str, user: CurrentUser, session: DbSession
+) -> list[RequirementOut]:
+    """Get the extracted requirements for a job description owned by the caller."""
+    try:
+        parsed_id = uuid.UUID(job_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Job description not found."},
+        ) from exc
+
+    result = await session.execute(
+        select(JobDescription).where(
+            JobDescription.id == parsed_id, JobDescription.user_id == user.id
+        )
+    )
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Job description not found."},
+        )
+
+    if job.state in (JobState.QUEUED, JobState.PROCESSING, JobState.RECEIVED):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "not_ready",
+                "message": "Requirement extraction is still in progress.",
+            },
+        )
+
+    reqs_res = await session.execute(
+        select(Requirement)
+        .where(Requirement.job_description_id == job.id)
+        .order_by(Requirement.ordinal.asc())
+    )
+    reqs = reqs_res.scalars().all()
+
+    return [
+        RequirementOut(
+            requirement_id=str(r.id),
+            ordinal=r.ordinal,
+            text=r.text,
+            kind=r.kind,
+            necessity=r.necessity,
+            criticality=r.criticality,
+            weight=float(r.weight),
+            evidence=RequirementEvidenceOut(
+                start=r.evidence_start,
+                end=r.evidence_end,
+                quote=r.evidence_quote,
+                page=r.evidence_page,
+                bbox=[
+                    r.evidence_bbox_x0,
+                    r.evidence_bbox_y0,
+                    r.evidence_bbox_x1,
+                    r.evidence_bbox_y1,
+                ]
+                if (
+                    r.evidence_bbox_x0 is not None
+                    and r.evidence_bbox_y0 is not None
+                    and r.evidence_bbox_x1 is not None
+                    and r.evidence_bbox_y1 is not None
+                )
+                else None,
+            ),
+        )
+        for r in reqs
+    ]

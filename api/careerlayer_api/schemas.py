@@ -139,3 +139,22 @@ class JobDescriptionOut(BaseModel):
     updated_at: str
     requirement_count: int = 0
     findings_by_severity: SeverityCounts = Field(default_factory=SeverityCounts)
+
+
+class RequirementEvidenceOut(BaseModel):
+    start: int
+    end: int
+    quote: str
+    page: int | None = None
+    bbox: list[float] | None = None
+
+
+class RequirementOut(BaseModel):
+    requirement_id: str
+    ordinal: int
+    text: str
+    kind: str
+    necessity: str
+    criticality: int
+    weight: float
+    evidence: RequirementEvidenceOut

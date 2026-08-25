@@ -88,7 +88,6 @@ def _run_jd_pipeline(job_description_id: str) -> None:
                     job_to_update.normalized_text = normalized.normalized_text
                     job_to_update.sha256 = normalized.sha256
                     job_to_update.page_count = document.page_count
-                    job_to_update.state = JobState.COMPLETED
                     job_to_update.failure_code = None
     else:
         # Pasted JD
@@ -98,8 +97,12 @@ def _run_jd_pipeline(job_description_id: str) -> None:
                 normalized = normalize_job_text(job_to_update.raw_text)
                 job_to_update.normalized_text = normalized.normalized_text
                 job_to_update.sha256 = normalized.sha256
-                job_to_update.state = JobState.COMPLETED
                 job_to_update.failure_code = None
+
+    # Run requirement extraction
+    from .requirement_extraction import extract_job_requirements
+
+    extract_job_requirements(job_description_id)
 
 
 def _fail_jd(job_description_id: str, code: str, exc: Exception) -> str:

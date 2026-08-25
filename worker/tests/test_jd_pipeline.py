@@ -1,9 +1,12 @@
 import uuid
 
 import pymupdf
+import pytest
 
 from careerlayer_api import storage
+from careerlayer_api.llm import MockLLMClient
 from careerlayer_api.models import JobDescription, JobSource, JobState, User
+from careerlayer_api.settings import get_settings
 from careerlayer_worker.db import session_scope
 from careerlayer_worker.jd_pipeline import process_job_description
 
@@ -17,7 +20,14 @@ def _build_pdf(text: str) -> bytes:
     return data
 
 
-def test_uploaded_pdf_job_processes_to_completion() -> None:
+def test_uploaded_pdf_job_processes_to_completion(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_data_processing_mode", "fixtures_only")
+    monkeypatch.setattr(
+        "careerlayer_worker.requirement_extraction.AnthropicLLMClient",
+        MockLLMClient,
+    )
+
     user_id = uuid.uuid4()
     with session_scope() as session:
         user = User(id=user_id, email=f"jd-worker-{user_id.hex[:8]}@example.com")
@@ -36,6 +46,7 @@ def test_uploaded_pdf_job_processes_to_completion() -> None:
             sha256="temp-sha",
             storage_key=storage.job_original_key(str(job_id)),
             state=JobState.QUEUED,
+            is_fixture=True,
         )
         session.add(job)
 
