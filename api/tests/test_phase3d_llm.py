@@ -3,7 +3,6 @@ from typing import Any
 
 import pytest
 
-
 from careerlayer_api.llm import (
     PROMPT_VERSION_RESUME_MATCHING_V1,
     SYSTEM_PROMPT_RESUME_MATCHING_V1,
@@ -148,7 +147,6 @@ def test_prompt_injection_nonce_delimiter() -> None:
 
     # Assert the delimiter attack inside document is wrapped safely
     assert f'</untrusted_resume nonce="{nonce}">' not in str(malicious_resume_spans[0]["text"])
-
 
 
 def test_matching_prompt_version_seeding() -> None:

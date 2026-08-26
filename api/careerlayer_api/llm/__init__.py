@@ -1,3 +1,4 @@
+from ..models import MatchType
 from .client import (
     AnthropicLLMClient,
     LLMCallResult,
@@ -12,7 +13,6 @@ from .client import (
     assemble_matching_user_message,
 )
 from .guard import PrivacyGateError, check_privacy_gate
-from ..models import MatchType
 from .pricing import compute_cost_usd
 from .prompts import (
     PROMPT_VERSION_JD_EXTRACTION_V1,
@@ -32,7 +32,6 @@ from .schemas import (
     get_jd_extraction_json_schema,
     get_resume_matching_json_schema,
 )
-
 
 __all__ = [
     "PROMPT_VERSION_JD_EXTRACTION_V1",

@@ -305,7 +305,12 @@ def test_valid_match_run_and_claim_creation(monkeypatch: pytest.MonkeyPatch) -> 
         assert match_run.state == MatchRunState.COMPLETED
         assert match_run.failure_code is None
         assert match_run.requirement_count == 3
+        assert match_run.score == Decimal("40.9")
+        assert match_run.score_if_trusted == Decimal("40.9")
+        assert match_run.impact_delta == Decimal("0.0")
+        assert match_run.unmet_required_count == 1
         assert match_run.narrative == "Candidate is strong in Python and distributed systems."
+
         assert match_run.cost_usd is not None and match_run.cost_usd > Decimal("0")
         assert match_run.input_tokens == 2200
         assert match_run.output_tokens == 600
@@ -450,6 +455,13 @@ def test_integrity_aware_matching(monkeypatch: pytest.MonkeyPatch) -> None:
         # Verify claim_findings association
         c_findings = session.query(ClaimFinding).filter_by(claim_id=cl3.id).all()
         assert len(c_findings) == 1
+
+        match_run = session.get(MatchRun, match_run_id)
+        assert match_run is not None
+        assert match_run.score == Decimal("0.0")
+        assert match_run.score_if_trusted == Decimal("35.3")
+        assert match_run.impact_delta == Decimal("35.3")
+        assert match_run.unmet_required_count == 2
 
 
 def test_integrity_suspicious_severity(monkeypatch: pytest.MonkeyPatch) -> None:

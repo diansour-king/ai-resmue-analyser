@@ -4,6 +4,15 @@ from decimal import Decimal
 from sqlalchemy import delete, select
 
 from careerlayer.integrity.models import BBox
+from careerlayer.scoring import (
+    ClaimInput as ScoringClaimInput,
+)
+from careerlayer.scoring import (
+    RequirementInput as ScoringRequirementInput,
+)
+from careerlayer.scoring import (
+    compute_match_score,
+)
 from careerlayer_api.llm import (
     PROMPT_VERSION_RESUME_MATCHING_V1,
     SYSTEM_PROMPT_RESUME_MATCHING_V1,
@@ -244,6 +253,7 @@ def process_match(
 
         claims_rejected = 0
         claims_accepted = 0
+        created_claims: list[tuple[Requirement, Claim, list[uuid.UUID]]] = []
 
         for req in requirements:
             req_id_str = str(req.id)
@@ -273,6 +283,46 @@ def process_match(
                 cf = ClaimFinding(claim_id=claim_record.id, finding_id=f_id)
                 session.add(cf)
 
+            created_claims.append((req, claim_record, evidence_spans))
+
+        # Deterministic match score calculation (Phase 3E)
+        scoring_reqs = [
+            ScoringRequirementInput(
+                id=str(r.id),
+                text=r.text,
+                criticality=r.criticality,
+                necessity=r.necessity.value if hasattr(r.necessity, "value") else str(r.necessity),
+                weight=r.weight,
+            )
+            for r, _, _ in created_claims
+        ]
+
+        scoring_claims = [
+            ScoringClaimInput(
+                requirement_id=str(c.requirement_id),
+                met=c.met,
+                match_type=(
+                    c.match_type.value if hasattr(c.match_type, "value") else str(c.match_type)
+                ),
+                evidence_spans=[str(sp) for sp in ev_spans],
+                satisfaction=c.satisfaction,
+                corroboration=c.corroboration,
+                integrity_factor=c.integrity_factor,
+                evidence_quality=c.evidence_quality,
+                contribution=c.contribution,
+                confidence=c.confidence,
+                rationale=c.rationale,
+                adjacency_note=c.adjacency_note,
+            )
+            for _, c, ev_spans in created_claims
+        ]
+
+        score_res = compute_match_score(
+            scoring_reqs,
+            scoring_claims,
+            scoring_version="v1",
+        )
+
         # Update MatchRun summary fields
         total_input_tokens = sum(c.input_tokens for c in call_results)
         total_output_tokens = sum(c.output_tokens for c in call_results)
@@ -283,7 +333,11 @@ def process_match(
         match_run.model = settings.llm_model
         match_run.prompt_version_id = prompt_version_id
         match_run.scoring_version = "v1"
-        match_run.requirement_count = len(requirements)
+        match_run.score = score_res.score
+        match_run.score_if_trusted = score_res.score_if_trusted
+        match_run.impact_delta = score_res.impact_delta
+        match_run.requirement_count = score_res.requirement_count
+        match_run.unmet_required_count = score_res.unmet_required_count
         match_run.input_tokens = total_input_tokens
         match_run.output_tokens = total_output_tokens
         match_run.cost_usd = Decimal(str(total_cost_usd)).quantize(Decimal("0.0001"))
