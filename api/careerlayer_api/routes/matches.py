@@ -9,6 +9,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from careerlayer.scoring import (
+    ClaimInput,
+    RequirementInput,
+    compute_gap_analysis,
+)
+
 from ..deps import CurrentUser, DbSession
 from ..llm.prompts import (
     PROMPT_VERSION_RESUME_MATCHING_V1,
@@ -31,15 +37,19 @@ from ..models import (
 from ..observability import log
 from ..queue import enqueue_match_processing
 from ..schemas import (
+    CandidateSkillGapOut,
     ClaimEvidenceOut,
     ClaimFindingOut,
     ClaimOut,
+    GapAnalysisOut,
+    GapItemOut,
     MatchAccepted,
     MatchCreate,
     MatchJobSummary,
     MatchListOut,
     MatchRunOut,
     MatchSummary,
+    SkillCombinationProjectionOut,
 )
 from ..settings import get_settings
 
@@ -438,6 +448,134 @@ async def get_match(match_run_id: str, user: CurrentUser, session: DbSession) ->
         token_cost_usd=(float(match_run.cost_usd) if match_run.cost_usd is not None else None),
         latency_ms=match_run.latency_ms,
         created_at=match_run.created_at.isoformat(),
+    )
+
+
+@router.get("/{match_run_id}/gaps")
+async def get_match_gaps(
+    match_run_id: str, request: Request, user: CurrentUser, session: DbSession
+) -> GapAnalysisOut:
+    """Compute deterministic requirement gaps and server-projected counterfactual scores."""
+    parsed_match_id = _parse_uuid(match_run_id, "match_run_id")
+
+    query = (
+        select(MatchRun)
+        .options(
+            selectinload(MatchRun.claims).selectinload(Claim.requirement),
+        )
+        .where(MatchRun.id == parsed_match_id, MatchRun.user_id == user.id)
+    )
+
+    res = await session.execute(query)
+    match_run = res.scalar_one_or_none()
+
+    if match_run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Match run not found."},
+        )
+
+    if match_run.state != MatchRunState.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "match_not_completed",
+                "message": "Cannot perform gap analysis on an incomplete match run.",
+            },
+        )
+
+    # Load all requirements for this job description
+    req_res = await session.execute(
+        select(Requirement)
+        .where(Requirement.job_description_id == match_run.job_description_id)
+        .order_by(Requirement.ordinal)
+    )
+    requirements = list(req_res.scalars().all())
+
+    req_inputs = [
+        RequirementInput(
+            id=str(r.id),
+            text=r.text,
+            criticality=r.criticality,
+            necessity=r.necessity.value if hasattr(r.necessity, "value") else str(r.necessity),
+            weight=r.weight,
+        )
+        for r in requirements
+    ]
+
+    claim_inputs = [
+        ClaimInput(
+            requirement_id=str(c.requirement_id),
+            met=c.met,
+            match_type=c.match_type.value if hasattr(c.match_type, "value") else str(c.match_type),
+            satisfaction=c.satisfaction,
+            corroboration=c.corroboration,
+            integrity_factor=c.integrity_factor,
+            evidence_quality=c.evidence_quality,
+            contribution=c.contribution,
+            confidence=float(c.confidence),
+            rationale=c.rationale,
+            adjacency_note=c.adjacency_note,
+        )
+        for c in match_run.claims
+    ]
+
+    analysis = compute_gap_analysis(
+        match_run_id=str(match_run.id),
+        requirements=req_inputs,
+        claims=claim_inputs,
+        scoring_version=match_run.scoring_version,
+    )
+
+    gaps_out = [
+        GapItemOut(
+            requirement_id=g.requirement_id,
+            skill=g.skill,
+            category=g.category.value,
+            requirement_text=g.requirement_text,
+            necessity=g.necessity,
+            criticality=g.criticality,
+            weight=float(g.weight),
+            current_satisfaction=float(g.current_satisfaction),
+            current_evidence_quality=float(g.current_evidence_quality),
+            current_contribution=float(g.current_contribution),
+            points_available=float(g.points_available),
+            projected_score=float(g.projected_score),
+        )
+        for g in analysis.gaps
+    ]
+
+    candidates_out = [
+        CandidateSkillGapOut(
+            skill=c.skill,
+            category=c.category.value,
+            requirement_ids=c.requirement_ids,
+            points_available=float(c.points_available),
+            projected_score=float(c.projected_score),
+        )
+        for c in analysis.candidates
+    ]
+
+    combinations_out = [
+        SkillCombinationProjectionOut(
+            skills=combo.skills,
+            projected_score=float(combo.projected_score),
+        )
+        for combo in analysis.combinations
+    ]
+
+    request_id = getattr(request.state, "request_id", None)
+
+    return GapAnalysisOut(
+        match_run_id=str(match_run.id),
+        base_score=float(analysis.base_score),
+        base_score_if_trusted=float(analysis.base_score_if_trusted),
+        impact_delta=float(analysis.impact_delta),
+        unmet_required_count=analysis.unmet_required_count,
+        gaps=gaps_out,
+        candidates=candidates_out,
+        combinations=combinations_out,
+        request_id=request_id,
     )
 
 

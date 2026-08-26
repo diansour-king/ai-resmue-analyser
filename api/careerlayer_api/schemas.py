@@ -257,3 +257,43 @@ class MatchRunOut(BaseModel):
     token_cost_usd: float | None = None
     latency_ms: int | None = None
     created_at: str
+
+
+class GapItemOut(BaseModel):
+    requirement_id: str
+    skill: str
+    category: str
+    requirement_text: str
+    necessity: str
+    criticality: int
+    weight: float
+    current_satisfaction: float
+    current_evidence_quality: float
+    current_contribution: float
+    points_available: float
+    projected_score: float
+
+
+class CandidateSkillGapOut(BaseModel):
+    skill: str
+    category: str
+    requirement_ids: list[str]
+    points_available: float
+    projected_score: float
+
+
+class SkillCombinationProjectionOut(BaseModel):
+    skills: list[str]
+    projected_score: float
+
+
+class GapAnalysisOut(BaseModel):
+    match_run_id: str
+    base_score: float
+    base_score_if_trusted: float
+    impact_delta: float
+    unmet_required_count: int
+    gaps: list[GapItemOut] = Field(default_factory=list)
+    candidates: list[CandidateSkillGapOut] = Field(default_factory=list)
+    combinations: list[SkillCombinationProjectionOut] = Field(default_factory=list)
+    request_id: str | None = None

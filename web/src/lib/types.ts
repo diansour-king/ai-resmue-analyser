@@ -221,4 +221,47 @@ export type JobDescription = {
   findings_by_severity: { high: number; suspicious: number; info: number };
 };
 
+export type GapCategory = "missing" | "partial" | "unverifiable";
+
+export type GapItem = {
+  requirement_id: string;
+  skill: string;
+  category: GapCategory;
+  requirement_text: string;
+  necessity: string;
+  criticality: number;
+  weight: number;
+  current_satisfaction: number;
+  current_evidence_quality: number;
+  current_contribution: number;
+  points_available: number;
+  projected_score: number;
+};
+
+export type CandidateSkillGap = {
+  skill: string;
+  category: GapCategory;
+  requirement_ids: string[];
+  points_available: number;
+  projected_score: number;
+};
+
+export type SkillCombinationProjection = {
+  skills: string[];
+  projected_score: number;
+};
+
+export type GapAnalysisResponse = {
+  match_run_id: string;
+  base_score: number;
+  base_score_if_trusted: number;
+  impact_delta: number;
+  unmet_required_count: number;
+  gaps: GapItem[];
+  candidates: CandidateSkillGap[];
+  combinations: SkillCombinationProjection[];
+  request_id?: string | null;
+};
+
+
 

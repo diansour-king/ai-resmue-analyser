@@ -130,13 +130,22 @@ export default function MatchResultPage({
             </div>
 
             {match.state === "completed" && (
-              <Link
-                href={`/app/matches/${matchId}/evidence`}
-                className="rounded-xl border border-primary bg-secondary-container px-4 py-2 text-label-md font-semibold text-on-secondary-container transition-colors hover:bg-secondary-container/80"
-              >
-                Open Grounded Evidence Viewer ↗
-              </Link>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/app/matches/${matchId}/gaps`}
+                  className="rounded-xl border border-outline-variant/40 bg-surface px-4 py-2 text-label-md font-semibold text-primary transition-colors hover:bg-surface-container"
+                >
+                  Simulate Skill Gaps →
+                </Link>
+                <Link
+                  href={`/app/matches/${matchId}/evidence`}
+                  className="rounded-xl border border-primary bg-secondary-container px-4 py-2 text-label-md font-semibold text-on-secondary-container transition-colors hover:bg-secondary-container/80"
+                >
+                  Open Grounded Evidence Viewer ↗
+                </Link>
+              </div>
             )}
+
           </div>
 
           {/* Live Processing Indicator */}

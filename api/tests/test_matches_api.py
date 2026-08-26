@@ -44,7 +44,11 @@ async def _create_test_environment(
 
     async with session_factory() as session:
         user_res = await session.execute(select(User).where(User.email == user_email))
-        user = user_res.scalar_one()
+        user = user_res.scalar_one_or_none()
+        if user is None:
+            user = User(id=uuid.uuid4(), email=user_email)
+            session.add(user)
+            await session.flush()
 
         resume_id = uuid.uuid4()
         resume = Resume(
@@ -544,3 +548,52 @@ async def test_post_matches_retry_on_failed_state(
     assert data["duplicate_of_existing"] is False
     assert len(enqueued) == 1
     assert enqueued[0] == str(ctx["match_run_id"])
+
+
+@pytest.mark.asyncio
+async def test_get_match_gaps_success(client: AsyncClient, signed_in: str) -> None:
+    ctx = await _create_test_environment(
+        signed_in, create_match_run=True, match_run_state=MatchRunState.COMPLETED
+    )
+
+    res = await client.get(f"/v1/matches/{ctx['match_run_id']}/gaps")
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["match_run_id"] == str(ctx["match_run_id"])
+    assert "base_score" in data
+    assert "base_score_if_trusted" in data
+    assert "impact_delta" in data
+    assert "gaps" in data
+    assert "candidates" in data
+    assert "combinations" in data
+
+
+@pytest.mark.asyncio
+async def test_get_match_gaps_incomplete_rejected(client: AsyncClient, signed_in: str) -> None:
+    ctx = await _create_test_environment(
+        signed_in, create_match_run=True, match_run_state=MatchRunState.PROCESSING
+    )
+
+    res = await client.get(f"/v1/matches/{ctx['match_run_id']}/gaps")
+    assert res.status_code == 400
+    data = res.json()
+    err = data.get("error") or data.get("detail", {})
+    assert err["code"] == "match_not_completed"
+
+
+@pytest.mark.asyncio
+async def test_get_match_gaps_tenant_isolation(
+    client: AsyncClient, signed_in: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Match created by another user
+    ctx_other = await _create_test_environment(
+        "other_user@example.com", create_match_run=True, match_run_state=MatchRunState.COMPLETED
+    )
+
+    # Authenticated user tries to access other user's gaps
+    res = await client.get(f"/v1/matches/{ctx_other['match_run_id']}/gaps")
+    assert res.status_code == 404
+    data = res.json()
+    err = data.get("error") or data.get("detail", {})
+    assert err["code"] == "not_found"

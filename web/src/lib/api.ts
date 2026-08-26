@@ -1,5 +1,6 @@
 import type {
   Finding,
+  GapAnalysisResponse,
   Identity,
   JobAccepted,
   JobDescription,
@@ -13,6 +14,7 @@ import type {
   Skill,
   UploadAccepted,
 } from "./types";
+
 
 
 
@@ -137,7 +139,11 @@ export const api = {
 
   getMatch: (matchRunId: string) => request<MatchRun>(`/v1/matches/${matchRunId}`),
 
+  getMatchGaps: (matchRunId: string) =>
+    request<GapAnalysisResponse>(`/v1/matches/${matchRunId}/gaps`),
+
   matchEventsUrl: (matchRunId: string) => `/v1/matches/${matchRunId}/events`,
+
 
   createJob: (payload: {
     raw_text: string;
