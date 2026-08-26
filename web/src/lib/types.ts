@@ -72,3 +72,95 @@ export type UploadAccepted = {
   page_count: number;
   duplicate_of_existing: boolean;
 };
+
+export type MatchAccepted = {
+  match_run_id: string;
+  state: string;
+  resume_id: string;
+  job_description_id: string;
+  reused: boolean;
+  duplicate_of_existing: boolean;
+};
+
+export type MatchJobSummary = {
+  job_description_id: string;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+};
+
+export type MatchSummary = {
+  match_run_id: string;
+  resume_id: string;
+  job_description_id: string;
+  state: string;
+  score: number | null;
+  score_if_trusted: number | null;
+  impact_delta: number | null;
+  requirement_count: number | null;
+  unmet_required_count: number | null;
+  job: MatchJobSummary;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClaimEvidenceDetail = {
+  span_id: string;
+  page: number;
+  quote: string;
+  bbox: [number, number, number, number] | null;
+};
+
+export type ClaimFindingDetail = {
+  finding_id: string;
+  detector_id: string;
+  detector_name: string | null;
+  severity: Severity;
+};
+
+export type MatchClaim = {
+  claim_id: string;
+  requirement_id: string;
+  requirement_text: string;
+  kind: string;
+  necessity: string;
+  criticality: number;
+  weight: number;
+  met: boolean;
+  match_type: "direct" | "adjacent" | "none";
+  satisfaction: number;
+  corroboration: number;
+  integrity_factor: number;
+  evidence_quality: number;
+  contribution: number;
+  confidence: number;
+  evidence: ClaimEvidenceDetail | null;
+  all_evidence_spans: string[];
+  findings: ClaimFindingDetail[];
+  rationale: string | null;
+  adjacency_note: string | null;
+};
+
+export type MatchRun = {
+  match_run_id: string;
+  resume_id: string;
+  job_description_id: string;
+  state: string;
+  model: string;
+  scoring_version: string;
+  prompt_version: string | null;
+  score: number | null;
+  score_if_trusted: number | null;
+  impact_delta: number | null;
+  requirement_count: number | null;
+  unmet_required_count: number | null;
+  job: MatchJobSummary;
+  claims: MatchClaim[];
+  narrative: string | null;
+  failure_code: string | null;
+  token_cost_usd: number | null;
+  latency_ms: number | null;
+  created_at: string;
+  updated_at: string;
+};
+

@@ -20,6 +20,7 @@ from .prompts import (
     SYSTEM_PROMPT_JD_EXTRACTION_V1,
     SYSTEM_PROMPT_RESUME_MATCHING_V1,
     ensure_prompt_version,
+    ensure_prompt_version_async,
     get_prompt_template_sha256,
 )
 from .schemas import (
@@ -60,6 +61,7 @@ __all__ = [
     "check_privacy_gate",
     "compute_cost_usd",
     "ensure_prompt_version",
+    "ensure_prompt_version_async",
     "get_jd_extraction_json_schema",
     "get_prompt_template_sha256",
     "get_resume_matching_json_schema",

@@ -158,3 +158,102 @@ class RequirementOut(BaseModel):
     criticality: int
     weight: float
     evidence: RequirementEvidenceOut
+
+
+class MatchCreate(BaseModel):
+    resume_id: str
+    job_description_id: str
+
+
+class MatchAccepted(BaseModel):
+    match_run_id: str
+    state: str
+    resume_id: str
+    job_description_id: str
+    reused: bool = False
+    duplicate_of_existing: bool = False
+
+
+class MatchJobSummary(BaseModel):
+    job_description_id: str
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+
+
+class MatchSummary(BaseModel):
+    match_run_id: str
+    resume_id: str
+    job_description_id: str
+    state: str
+    score: float | None = None
+    score_if_trusted: float | None = None
+    impact_delta: float | None = None
+    requirement_count: int | None = None
+    unmet_required_count: int | None = None
+    job: MatchJobSummary
+    created_at: str
+
+
+class MatchListOut(BaseModel):
+    items: list[MatchSummary]
+    next_cursor: str | None = None
+
+
+class ClaimEvidenceOut(BaseModel):
+    span_id: str
+    page: int
+    quote: str
+    bbox: list[float] | None = None
+
+
+class ClaimFindingOut(BaseModel):
+    finding_id: str
+    detector_id: str
+    detector_name: str | None = None
+    severity: str
+
+
+class ClaimOut(BaseModel):
+    claim_id: str
+    requirement_id: str
+    requirement_text: str
+    kind: str
+    necessity: str
+    criticality: int
+    weight: float
+    met: bool
+    match_type: str
+    satisfaction: float
+    corroboration: float
+    integrity_factor: float
+    evidence_quality: float
+    contribution: float
+    confidence: float
+    evidence: ClaimEvidenceOut | None = None
+    all_evidence_spans: list[str] = Field(default_factory=list)
+    findings: list[ClaimFindingOut] = Field(default_factory=list)
+    rationale: str | None = None
+    adjacency_note: str | None = None
+
+
+class MatchRunOut(BaseModel):
+    match_run_id: str
+    resume_id: str
+    job_description_id: str
+    state: str
+    model: str
+    scoring_version: str
+    prompt_version: str | None = None
+    score: float | None = None
+    score_if_trusted: float | None = None
+    impact_delta: float | None = None
+    requirement_count: int | None = None
+    unmet_required_count: int | None = None
+    job: MatchJobSummary
+    claims: list[ClaimOut] = Field(default_factory=list)
+    narrative: str | None = None
+    failure_code: str | None = None
+    token_cost_usd: float | None = None
+    latency_ms: int | None = None
+    created_at: str

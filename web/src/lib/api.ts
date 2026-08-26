@@ -1,11 +1,15 @@
 import type {
   Finding,
   Identity,
+  MatchAccepted,
+  MatchRun,
+  MatchSummary,
   Resume,
   ResumeSummary,
   Skill,
   UploadAccepted,
 } from "./types";
+
 
 /**
  * The only place in the app that talks to the network.
@@ -109,7 +113,27 @@ export const api = {
   pageRenderUrl: (resumeId: string, pageNumber: number) =>
     `/v1/resumes/${resumeId}/pages/${pageNumber}`,
 
+  createMatch: (resumeId: string, jobDescriptionId: string) =>
+    postJson<MatchAccepted>("/v1/matches", {
+      resume_id: resumeId,
+      job_description_id: jobDescriptionId,
+    }),
+
+  listMatches: (params?: { resume_id?: string; job_description_id?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.resume_id) query.set("resume_id", params.resume_id);
+    if (params?.job_description_id) query.set("job_description_id", params.job_description_id);
+    if (params?.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return request<{ items: MatchSummary[]; next_cursor: string | null }>(
+      `/v1/matches${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  getMatch: (matchRunId: string) => request<MatchRun>(`/v1/matches/${matchRunId}`),
+
   upload: (file: File, onProgress?: (fraction: number) => void) =>
+
     new Promise<UploadAccepted>((resolve, reject) => {
       // XMLHttpRequest rather than fetch, purely because it is the only browser API that
       // reports upload progress. The user needs to see a large PDF moving.

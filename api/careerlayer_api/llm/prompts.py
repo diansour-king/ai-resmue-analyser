@@ -111,3 +111,31 @@ def ensure_prompt_version(
     session.add(version)
     session.flush()
     return version
+
+
+async def ensure_prompt_version_async(
+    session: Any,
+    *,
+    name: str = PROMPT_VERSION_JD_EXTRACTION_V1,
+    purpose: str = "jd_extraction",
+    template: str = SYSTEM_PROMPT_JD_EXTRACTION_V1,
+    model: str = "claude-sonnet-5",
+) -> PromptVersion:
+    """Async variant: ensure a versioned system prompt template is persisted."""
+    result = await session.execute(select(PromptVersion).where(PromptVersion.name == name))
+    existing = result.scalar_one_or_none()
+    if existing is not None and isinstance(existing, PromptVersion):
+        return existing
+
+    template_sha256 = get_prompt_template_sha256(template)
+    version = PromptVersion(
+        name=name,
+        purpose=purpose,
+        template=template,
+        template_sha256=template_sha256,
+        model=model,
+    )
+    session.add(version)
+    await session.flush()
+    return version
+

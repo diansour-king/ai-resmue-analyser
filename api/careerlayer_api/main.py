@@ -11,6 +11,7 @@ from . import observability
 from .health import router as health_router
 from .routes.auth import router as auth_router
 from .routes.jobs import router as jobs_router
+from .routes.matches import router as matches_router
 from .routes.resumes import router as resumes_router
 from .settings import get_settings
 
@@ -94,3 +95,4 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(resumes_router)
 app.include_router(jobs_router)
+app.include_router(matches_router)
