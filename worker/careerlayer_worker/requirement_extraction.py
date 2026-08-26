@@ -61,13 +61,11 @@ def extract_job_requirements(
     llm = client or AnthropicLLMClient()
 
     try:
-        call_result: LLMCallResult[JobRequirementExtractionOutput] = (
-            llm.extract_job_requirements(
-                normalized_text,
-                is_fixture=is_fixture,
-                prompt_template=prompt_template,
-                prompt_version_name=prompt_version_name,
-            )
+        call_result: LLMCallResult[JobRequirementExtractionOutput] = llm.extract_job_requirements(
+            normalized_text,
+            is_fixture=is_fixture,
+            prompt_template=prompt_template,
+            prompt_version_name=prompt_version_name,
         )
     except PrivacyGateError as exc:
         log("requirement_extraction_blocked_privacy", job_id=str(parsed_job_id), code=exc.code)

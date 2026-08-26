@@ -8,6 +8,7 @@ from .settings import get_settings
 QUEUE_NAME = "resume-processing"
 PROCESS_JOB = "careerlayer_worker.pipeline.process_resume"
 PROCESS_JOB_DESCRIPTION = "careerlayer_worker.jd_pipeline.process_job_description"
+PROCESS_MATCH = "careerlayer_worker.matching.process_match"
 
 # Rendering and OCR of a long resume is minutes, not seconds. The timeout is generous
 # because a job killed halfway leaves a resume stuck in "processing" with no findings, which
@@ -39,4 +40,11 @@ def enqueue_job_processing(job_description_id: str) -> str:
     job = queue.enqueue(
         PROCESS_JOB_DESCRIPTION, job_description_id, job_timeout=JOB_TIMEOUT_SECONDS
     )
+    return str(job.id)
+
+
+def enqueue_match_processing(match_run_id: str) -> str:
+    """Hand the match run to the worker for requirement evaluation and claim persistence."""
+    queue = Queue(QUEUE_NAME, connection=_redis())
+    job = queue.enqueue(PROCESS_MATCH, match_run_id, job_timeout=JOB_TIMEOUT_SECONDS)
     return str(job.id)
