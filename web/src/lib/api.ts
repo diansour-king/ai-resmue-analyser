@@ -1,6 +1,10 @@
 import type {
   Finding,
   Identity,
+  JobAccepted,
+  JobDescription,
+  JobRequirement,
+  JobSummary,
   MatchAccepted,
   MatchRun,
   MatchSummary,
@@ -9,6 +13,7 @@ import type {
   Skill,
   UploadAccepted,
 } from "./types";
+
 
 
 /**
@@ -131,6 +136,65 @@ export const api = {
   },
 
   getMatch: (matchRunId: string) => request<MatchRun>(`/v1/matches/${matchRunId}`),
+
+  matchEventsUrl: (matchRunId: string) => `/v1/matches/${matchRunId}/events`,
+
+  createJob: (payload: {
+    raw_text: string;
+    title?: string | null;
+    company?: string | null;
+    location?: string | null;
+  }) => postJson<JobAccepted>("/v1/jobs", payload),
+
+  listJobs: () => request<JobSummary[]>("/v1/jobs"),
+
+  getJob: (jobId: string) => request<JobDescription>(`/v1/jobs/${jobId}`),
+
+  getJobRequirements: (jobId: string) => request<JobRequirement[]>(`/v1/jobs/${jobId}/requirements`),
+
+  uploadJob: (
+    file: File,
+    meta?: { title?: string; company?: string; location?: string },
+    onProgress?: (fraction: number) => void,
+  ) =>
+    new Promise<JobAccepted>((resolve, reject) => {
+      const form = new FormData();
+      form.append("file", file);
+      if (meta?.title) form.append("title", meta.title);
+      if (meta?.company) form.append("company", meta.company);
+      if (meta?.location) form.append("location", meta.location);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/v1/jobs");
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+      };
+      xhr.onload = () => {
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(xhr.responseText) as unknown;
+        } catch {
+          parsed = null;
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(parsed as JobAccepted);
+          return;
+        }
+        const envelope = (parsed ?? {}) as ErrorEnvelope;
+        reject(
+          new ApiError(
+            xhr.status,
+            envelope.error?.code ?? "error",
+            envelope.error?.message ?? "The job description upload failed.",
+            envelope.request_id ?? null,
+          ),
+        );
+      };
+      xhr.onerror = () =>
+        reject(new ApiError(0, "network", "The upload could not reach CareerLayer.", null));
+      xhr.send(form);
+    }),
+
 
   upload: (file: File, onProgress?: (fraction: number) => void) =>
 

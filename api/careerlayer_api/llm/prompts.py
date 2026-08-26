@@ -138,4 +138,3 @@ async def ensure_prompt_version_async(
     session.add(version)
     await session.flush()
     return version
-

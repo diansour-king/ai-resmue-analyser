@@ -18,7 +18,10 @@ import type { Identity } from "@/lib/types";
 const NAV = [
   { href: "/app", label: "Overview", icon: "▦" },
   { href: "/app/resume", label: "Resume", icon: "▤" },
+  { href: "/app/jobs", label: "Job Descriptions", icon: "📄" },
+  { href: "/app/matches", label: "Matches", icon: "⚡" },
 ];
+
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -161,6 +161,64 @@ export type MatchRun = {
   token_cost_usd: number | null;
   latency_ms: number | null;
   created_at: string;
-  updated_at: string;
 };
+
+export type JobRequirementEvidence = {
+
+  start: number;
+  end: number;
+  quote: string;
+};
+
+export type JobRequirement = {
+  requirement_id: string;
+  ordinal: number;
+  text: string;
+  kind: string;
+  necessity: string;
+  criticality: number;
+  weight: number;
+  evidence: JobRequirementEvidence;
+};
+
+export type JobAccepted = {
+  job_description_id: string;
+  state: ProcessingState;
+  source: string;
+  title: string | null;
+  company: string | null;
+  sha256: string;
+  duplicate_of_existing: boolean;
+};
+
+export type JobSummary = {
+  job_description_id: string;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  source: string;
+  state: ProcessingState;
+  created_at: string;
+};
+
+export type JobDescription = {
+  job_description_id: string;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  source: string;
+  state: ProcessingState;
+  raw_text: string | null;
+  normalized_text: string | null;
+  sha256: string;
+  page_count: number | null;
+  failure_code: string | null;
+  extractor_version: string | null;
+  is_fixture: boolean;
+  created_at: string;
+  updated_at: string;
+  requirement_count: number;
+  findings_by_severity: { high: number; suspicious: number; info: number };
+};
+
 
