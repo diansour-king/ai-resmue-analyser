@@ -6,13 +6,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
-COPY api/pyproject.toml /srv/api/pyproject.toml
-COPY api/careerlayer_api /srv/api/careerlayer_api
+COPY packages/scoring /srv/packages/scoring
+COPY api /srv/api
 
 # Editable, so the bind mount declared in infra/docker-compose.yml shadows the copied
 # source and code changes take effect without a rebuild. Phase 5 builds the production
 # image from a separate stage without --reload and without the dev extra.
-RUN pip install -e "/srv/api[dev]"
+RUN pip install -e /srv/packages/scoring \
+ && pip install -e "/srv/api[dev]"
 
 CMD ["uvicorn", "careerlayer_api.main:app", \
      "--host", "0.0.0.0", "--port", "8000", \

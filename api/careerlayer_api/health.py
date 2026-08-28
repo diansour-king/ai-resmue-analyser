@@ -15,11 +15,15 @@ _OK = "ok"
 
 
 @router.get("/health")
+@router.get("/health/live")
+@router.get("/v1/health")
+@router.get("/v1/health/live")
 async def liveness(request: Request) -> dict[str, str]:
     return {"status": "alive", "request_id": request.state.request_id}
 
 
 @router.get("/health/ready")
+@router.get("/v1/health/ready")
 async def readiness(request: Request, response: Response) -> dict[str, object]:
     timeout = get_settings().dependency_probe_timeout
     postgres, cache = await asyncio.gather(

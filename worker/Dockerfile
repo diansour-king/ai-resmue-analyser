@@ -14,10 +14,12 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /srv
 
 COPY packages/integrity /srv/packages/integrity
+COPY packages/scoring /srv/packages/scoring
 COPY api /srv/api
 COPY worker /srv/worker
 
 RUN pip install -e /srv/packages/integrity \
+ && pip install -e /srv/packages/scoring \
  && pip install -e /srv/api \
  && pip install -e /srv/worker
 

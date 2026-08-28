@@ -20,10 +20,12 @@ dependencies = [
   "pymupdf>=1.24",
   "python-multipart>=0.0.9",
   "structlog>=24.4",
+  "httpx>=0.28",
+  "careerlayer-scoring",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.28"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["careerlayer_api"]
