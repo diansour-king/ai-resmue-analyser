@@ -35,9 +35,9 @@ services:
     plan: free
     dockerfilePath: ./worker/Dockerfile   # carries Tesseract + careerlayer_api + worker
     dockerContext: .
-    # 1. apply pending migrations  2. start the RQ worker in the background
-    # 3. hand the container to uvicorn on Render's injected $PORT
-    dockerCommand: alembic -c /srv/api/alembic.ini upgrade head && (python -m careerlayer_worker.main &) && uvicorn careerlayer_api.main:app --host 0.0.0.0 --port $PORT
+    # migrate, then start the RQ worker in the background, then uvicorn in the foreground.
+    # The logic is in a script so there is no shell quoting to get wrong here.
+    dockerCommand: sh /srv/worker/start-web.sh
     healthCheckPath: /health/ready
     envVars:
       - key: DATABASE_URL
