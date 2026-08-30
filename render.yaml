@@ -1,17 +1,23 @@
-# Render Blueprint for CareerLayer.
+# Render Blueprint for CareerLayer — free-tier layout.
 #
-# Creates: a managed Postgres, a managed Key Value (Redis), and three services built from
-# the Dockerfiles already in this repo (API, RQ worker, Next.js web).
+# Creates: a managed Postgres, a managed Key Value (Redis), and two web services built from
+# the Dockerfiles in this repo.
 #
-# Object storage is NOT part of this blueprint. Render has no S3 service; create a bucket
-# on any S3-compatible provider (Cloudflare R2 is the cheapest for a small project) and
-# fill in the four S3_* values marked `sync: false` in the Render dashboard.
+# Render has no free "background worker" plan, so the API service runs on the *worker*
+# image (which carries Tesseract and every package) and starts the RQ worker alongside
+# uvicorn in one container. Trade-off: a free web service sleeps after ~15 min idle, so
+# background processing only happens while someone is using the app. To split them back
+# out, restore a `type: worker` service on `plan: starter` using ./worker/Dockerfile and
+# drop the `python -m careerlayer_worker.main &` from the API command below.
 #
-# See docs/deployment.md for the click-through.
+# Object storage is NOT part of this blueprint — Render has no S3 service. Create a bucket
+# on any S3-compatible provider (Supabase Storage and Cloudflare R2 both have free tiers)
+# and fill in the five S3_* values marked `sync: false` in the Render dashboard, on the
+# API service. See docs/deployment.md for the walk-through.
 
 databases:
   - name: careerlayer-db
-    plan: free           # free Postgres is deleted after 30 days; move to a paid plan to keep it
+    plan: free           # free Postgres is deleted after 30 days; upgrade to keep the data
     postgresMajorVersion: "16"
 
 services:
@@ -22,19 +28,17 @@ services:
     ipAllowList: []       # reachable only from other services in this blueprint
     maxmemoryPolicy: noeviction   # the RQ job queue must not have entries evicted
 
-  # ---------------------------------------------------------------- FastAPI
+  # ---------------------------------------------------------------- API + RQ worker (one box)
   - type: web
     name: careerlayer-api
     runtime: docker
     plan: free
-    dockerfilePath: ./api/Dockerfile
+    dockerfilePath: ./worker/Dockerfile   # carries Tesseract + careerlayer_api + worker
     dockerContext: .
-    # The image CMD runs uvicorn with --reload for local development. Production listens
-    # on Render's injected $PORT with no reloader.
-    dockerCommand: uvicorn careerlayer_api.main:app --host 0.0.0.0 --port $PORT
+    # 1. apply pending migrations  2. start the RQ worker in the background
+    # 3. hand the container to uvicorn on Render's injected $PORT
+    dockerCommand: alembic -c /srv/api/alembic.ini upgrade head && (python -m careerlayer_worker.main &) && uvicorn careerlayer_api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health/ready
-    # Runs against the new release's image before it receives traffic.
-    preDeployCommand: alembic -c /srv/api/alembic.ini upgrade head
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -54,49 +58,17 @@ services:
         value: "true"
       - key: LLM_DATA_PROCESSING_MODE
         value: disabled
-      # --- object storage: set these in the dashboard (Cloudflare R2 shown) -------------
+      # --- object storage: set these in the dashboard --------------------------------------
       - key: S3_ENDPOINT_URL
-        sync: false        # https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+        sync: false   # Supabase: https://<ref>.supabase.co/storage/v1/s3
       - key: S3_ACCESS_KEY
         sync: false
       - key: S3_SECRET_KEY
         sync: false
       - key: S3_BUCKET
-        sync: false        # e.g. careerlayer-resumes
+        sync: false   # careerlayer-resumes
       - key: S3_REGION
-        value: auto         # R2 uses "auto"; for AWS use the bucket's region
-
-  # ---------------------------------------------------------------- RQ worker (OCR + LLM)
-  - type: worker
-    name: careerlayer-worker
-    runtime: docker
-    plan: starter          # OCR + page rendering needs more than the free instance memory
-    dockerfilePath: ./worker/Dockerfile
-    dockerContext: .
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: careerlayer-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: careerlayer-redis
-          property: connectionString
-      - key: ENVIRONMENT
-        value: development
-      - key: LLM_DATA_PROCESSING_MODE
-        value: disabled
-      - key: S3_ENDPOINT_URL
-        sync: false
-      - key: S3_ACCESS_KEY
-        sync: false
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_REGION
-        value: auto
+        sync: false   # Supabase: the project region, e.g. us-east-1 (Cloudflare R2: auto)
 
   # ---------------------------------------------------------------- Next.js (public entry)
   - type: web
@@ -108,8 +80,7 @@ services:
     dockerCommand: npx next start -p $PORT
     envVars:
       # The browser only ever talks to this service; /v1/* is proxied here to the API.
-      # Set to the API service's URL once it is live, e.g.
-      # https://careerlayer-api.onrender.com
+      # Set to the API service's URL once it is live, e.g. https://careerlayer-api.onrender.com
       - key: API_ORIGIN
         sync: false
       - key: NEXT_TELEMETRY_DISABLED

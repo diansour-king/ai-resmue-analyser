@@ -1,101 +1,118 @@
 # Deploying CareerLayer to Render
 
-This is a portfolio-grade deployment: a working, clickable instance. It is **not** the full
-production hardening in `execution-roadmap.md` (no rate/cost limits, no email sign-in, no
-backups). What you get is the whole workflow running on real infrastructure.
+This is a portfolio-grade deployment: a working, clickable instance on the free tier. It is
+**not** the full production hardening in `execution-roadmap.md` (no rate/cost limits, no
+email sign-in, no backups). What you get is the whole workflow running on real
+infrastructure.
 
 ## Architecture on Render
 
 | Piece | Render resource | Notes |
 | --- | --- | --- |
-| Postgres | Managed PostgreSQL | Free plan is deleted after 30 days |
-| Redis | Managed Key Value | RQ job queue + sessions |
-| API | Web Service (Docker, `api/Dockerfile`) | FastAPI / uvicorn |
-| Worker | Background Worker (Docker, `worker/Dockerfile`) | OCR + page rendering + LLM calls |
+| Postgres | Managed PostgreSQL (free) | Free plan is deleted after 30 days |
+| Redis | Managed Key Value (free) | RQ job queue + sessions |
+| API + worker | one Web Service (Docker, `worker/Dockerfile`) | uvicorn **and** the RQ worker in one container |
 | Web | Web Service (Docker, `web/Dockerfile`) | Next.js, the only public entry point |
 | Object storage | **not on Render** | bring an S3-compatible bucket (see below) |
 
-Everything is wired by [`render.yaml`](../render.yaml) except the four `S3_*` secrets and the
-web service's `API_ORIGIN`, which you paste in after the first deploy.
+Render has no free *background worker* plan, so the API service runs on the worker image
+(it carries Tesseract and every package) and starts the RQ worker next to uvicorn. This
+keeps the whole stack at **$0/month**. Trade-off: a free web service sleeps after ~15 min
+idle, so resume/JD processing only runs while someone is using the app — fine for a demo,
+and jobs queued while asleep run when it wakes.
 
-## 1. Object storage (Cloudflare R2)
+To run the worker as its own always-on service instead, add a `type: worker` service on
+`plan: starter` (~$7/mo) using `./worker/Dockerfile` and remove the
+`python -m careerlayer_worker.main &` fragment from the API `dockerCommand` in `render.yaml`.
 
-R2 is S3-compatible, has a 10 GB free tier, and charges nothing for egress — the best fit
-for a small project. AWS S3 or Backblaze B2 work identically; only the endpoint and region
-differ.
+Everything is wired by [`render.yaml`](../render.yaml) except the five `S3_*` values and the
+web service's `API_ORIGIN`, which you set in the dashboard after the first deploy.
 
-1. Cloudflare dashboard → **R2** → **Create bucket**, name it `careerlayer-resumes`.
-2. **R2 → Manage R2 API Tokens → Create API token**, permission **Object Read & Write**,
-   scoped to that bucket. Copy the **Access Key ID**, **Secret Access Key**, and the
-   **S3 API endpoint** (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`).
+## 1. Object storage
 
-Keep these four values for step 3:
+Any S3-compatible store works — the code uses path-style addressing and v4 signing.
+Two free, no-fuss options:
 
-| Env var | Value |
-| --- | --- |
-| `S3_ENDPOINT_URL` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
-| `S3_ACCESS_KEY` | the Access Key ID |
-| `S3_SECRET_KEY` | the Secret Access Key |
-| `S3_BUCKET` | `careerlayer-resumes` |
+**Supabase Storage** (no payment method required)
+1. [supabase.com](https://supabase.com) → new project (free).
+2. **Storage** → new bucket `careerlayer-resumes`, keep it **private**.
+3. **Project Settings → Storage → S3 Connection** → note the **endpoint** and **region**,
+   then create an **access key** (ID + secret).
 
-(`S3_REGION` is already set to `auto` in the blueprint; for AWS set it to the bucket region.)
+**Cloudflare R2** (10 GB free, but asks for a card on file)
+1. Dashboard → **R2 Object Storage** → enable → **Create bucket** `careerlayer-resumes`.
+2. **Manage R2 API Tokens → Create**, *Object Read & Write*, scoped to the bucket. Copy the
+   Access Key ID, Secret Access Key, and the S3 endpoint
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+
+Values for step 3 (set on the **careerlayer-api** service):
+
+| Env var | Supabase | Cloudflare R2 |
+| --- | --- | --- |
+| `S3_ENDPOINT_URL` | `https://<ref>.supabase.co/storage/v1/s3` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `S3_ACCESS_KEY` | access key ID | Access Key ID |
+| `S3_SECRET_KEY` | secret | Secret Access Key |
+| `S3_BUCKET` | `careerlayer-resumes` | `careerlayer-resumes` |
+| `S3_REGION` | project region, e.g. `us-east-1` | `auto` |
 
 ## 2. Create the Blueprint
 
-1. Push this repo to GitHub (already done: `github.com/diansour-king/ai-resmue-analyser`).
-2. Render dashboard → **New → Blueprint** → connect the repo. Render reads `render.yaml`
-   and shows five resources to create. Approve.
-3. The first build of `careerlayer-api` and `careerlayer-worker` will **fail or crash-loop**
-   until the S3 secrets are set and the web service knows the API URL — expected, fixed next.
+1. Render dashboard → **New → Blueprint**. If the repo is not listed, click **Configure
+   account** under GitHub and grant access to `ai-resmue-analyser`, then connect it.
+2. Give the Blueprint a name (e.g. `careerlayer`), branch `main`, path `render.yaml`.
+3. Render shows four resources (db, redis, `careerlayer-api`, `careerlayer-web`) → **Apply**.
+4. `careerlayer-api` will crash-loop until step 3 (no S3 config) and `careerlayer-web`
+   until `API_ORIGIN` is set — expected.
 
-## 3. Fill in the secrets
+## 3. Fill in the config
 
 In the Render dashboard:
 
 - **careerlayer-api → Environment** → set `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`,
-  `S3_SECRET_KEY`, `S3_BUCKET` from step 1.
-- **careerlayer-worker → Environment** → set the same four.
-- **careerlayer-web → Environment** → set `API_ORIGIN` to the API service's URL, which
-  Render shows on the API service page, e.g. `https://careerlayer-api.onrender.com`.
+  `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION` from step 1.
+- **careerlayer-web → Environment** → set `API_ORIGIN` to the API service's URL, shown on
+  its service page, e.g. `https://careerlayer-api.onrender.com`.
 
-Then **Manual Deploy → Deploy latest commit** on api, worker, and web.
+Then **Manual Deploy → Deploy latest commit** on both services.
 
 ## 4. Verify
 
-```
+```bash
 curl https://careerlayer-api.onrender.com/health/ready
 # {"status":"ready","checks":{"postgres":"ok","redis":"ok"},...}
 ```
 
-Open the web URL, sign in (the magic link is shown on screen — see auth note below), upload
-a PDF resume, wait for the worker to finish, paste a job description, run a match.
+Open the web URL, sign in (the magic link is shown on screen — see auth note), upload a PDF
+resume, wait for processing, paste a job description, run a match.
 
-Database migrations run automatically before each API deploy via the blueprint's
-`preDeployCommand` (`alembic upgrade head`).
+Migrations (`alembic upgrade head`) run as the first step of the API container's start
+command, so the schema is applied on every deploy; it is a fast no-op when nothing is
+pending.
 
 ## Auth on this deployment
 
 `ENVIRONMENT=development` is set on purpose so the sign-in link is returned in the API
 response and the frontend displays it — there is no mail server, and real email delivery
-(feature B5) is not built yet. `COOKIE_SECURE=true` is also set, so the session cookie
-still carries the `Secure` flag over Render's HTTPS.
+(feature B5) is not built yet. `COOKIE_SECURE=true` keeps the session cookie `Secure` over
+Render's HTTPS.
 
-Trade-off: the sign-in link briefly appears in an HTTP response. Acceptable for a demo with
-synthetic data; do not put anything real behind it. To close this properly, implement
+Trade-off: the sign-in link briefly appears in a response body. Acceptable for a demo with
+synthetic data; do not put anything real behind it. To close this, implement
 `api/careerlayer_api/email.py` (SMTP) and set `ENVIRONMENT=production`.
 
-## Cost and free-tier caveats
+## Free-tier caveats
 
-- Free web services **spin down after 15 minutes idle**; the first request then takes
-  ~30–60 s. The worker (`starter` plan) and Postgres do not spin down.
-- Free Postgres is **removed after 30 days**. Upgrade it before then to keep your data.
-- The worker is on `starter` (not free) because OCR and 200-DPI page rendering exceed the
-  free instance's memory.
+- Free web services **sleep after ~15 min idle**; the next request takes ~30–60 s and, for
+  the API box, that is also when queued resume/JD jobs get processed.
+- Free Postgres is **deleted after 30 days** — upgrade to keep the data.
+- The free instance has 512 MB RAM. A very large PDF (many pages, heavy OCR) can OOM the
+  worker; the job is marked failed and is safe to re-run. Split the worker onto `starter`
+  if this happens often.
 
 ## LLM (optional)
 
 The blueprint sets `LLM_DATA_PROCESSING_MODE=disabled`, so requirement extraction and
 matching run without a provider and return a structured `llm_disabled` result. To enable
 real matching, set `LLM_API_KEY` and `LLM_DATA_PROCESSING_MODE=fixtures_only` (or
-`production`, which additionally needs `LLM_PRIVACY_ATTESTATION_ID` /
-`LLM_PRIVACY_VERIFIED_AT`) on both `careerlayer-api` and `careerlayer-worker`.
+`production`, which also needs `LLM_PRIVACY_ATTESTATION_ID` / `LLM_PRIVACY_VERIFIED_AT`) on
+`careerlayer-api`.
