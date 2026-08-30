@@ -24,7 +24,7 @@ class LoginRequest(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    token: str
+    token: str = Field(min_length=1)
 
 
 class LinkIssued(BaseModel):
@@ -71,8 +71,12 @@ async def log_in(payload: LoginRequest, session: DbSession) -> LinkIssued:
 @router.post("/verify")
 async def verify(payload: VerifyRequest, response: Response, session: DbSession) -> Identity:
     settings = get_settings()
+    clean_token = payload.token.strip()
+    if not clean_token:
+        raise _invalid_link()
+
     result = await session.execute(
-        select(LoginToken).where(LoginToken.token_hash == hash_token(payload.token))
+        select(LoginToken).where(LoginToken.token_hash == hash_token(clean_token))
     )
     token = result.scalar_one_or_none()
     if token is None or token.consumed_at is not None or token.expires_at < utcnow():
@@ -114,10 +118,16 @@ async def log_out(request: Request, response: Response, session: DbSession) -> N
             select(Session).where(Session.token_hash == hash_token(secret))
         )
         stored = result.scalar_one_or_none()
-        if stored is not None:
+        if stored is not None and stored.revoked_at is None:
             stored.revoked_at = utcnow()
             await session.commit()
-    response.delete_cookie(settings.session_cookie_name, path="/")
+    response.delete_cookie(
+        settings.session_cookie_name,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=not settings.expose_login_links,
+    )
 
 
 @router.get("/me")
