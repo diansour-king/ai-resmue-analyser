@@ -1,5 +1,24 @@
 name: careerlayer
 
+# The provider configuration the API and the worker both read. Values come from .env;
+# unset ones arrive as empty strings, which settings.py treats as "not configured".
+x-llm-env: &llm-env
+  LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+  LLM_MODEL: ${LLM_MODEL:-claude-sonnet-5}
+  LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-claude-opus-5}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_INFERENCE_GEO: ${LLM_INFERENCE_GEO:-}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
+  LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-1}
+  LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.0}
+  LLM_MAX_OUTPUT_TOKENS_EXTRACTION: ${LLM_MAX_OUTPUT_TOKENS_EXTRACTION:-4096}
+  LLM_MAX_OUTPUT_TOKENS_MATCHING: ${LLM_MAX_OUTPUT_TOKENS_MATCHING:-8192}
+  LLM_CACHE_TTL: ${LLM_CACHE_TTL:-5m}
+  LLM_DATA_PROCESSING_MODE: ${LLM_DATA_PROCESSING_MODE:-disabled}
+  LLM_PRIVACY_ATTESTATION_ID: ${LLM_PRIVACY_ATTESTATION_ID:-}
+  LLM_PRIVACY_VERIFIED_AT: ${LLM_PRIVACY_VERIFIED_AT:-}
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -74,6 +93,7 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: ${S3_BUCKET}
       ENVIRONMENT: ${ENVIRONMENT}
+      <<: *llm-env
     ports:
       - "${API_PORT}:8000"
     volumes:
@@ -101,6 +121,7 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: ${S3_BUCKET}
       ENVIRONMENT: ${ENVIRONMENT}
+      <<: *llm-env
     volumes:
       - ../worker:/srv/worker
       - ../packages/integrity:/srv/packages/integrity

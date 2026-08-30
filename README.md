@@ -18,9 +18,13 @@ measured cost per document in phase 5.
 | 0 | Repository skeleton, local stack, health endpoint | done |
 | 1 | Integrity CLI: dual extraction, detectors D1-D6 | done |
 | 2 | Upload, extract, document viewer | done |
-| 3 | Job matching with evidence-linked claims | not started |
-| 4 | Impact canary, eval corpus, CI gate | not started |
-| 5 | Observability, rate limits, deploy | not started |
+| 3 | Job matching: JD ingestion, requirement extraction, evidence-linked claims, deterministic scoring, skill-gap projections | done |
+| 4 | Eval corpus and measured accuracy, CI gate | not started |
+| 5 | Email sign-in, rate and cost limits, `/metrics`, production packaging, deploy | in progress |
+
+Phase 3 ships the matching workflow end to end. It does not yet quote an accuracy number:
+that requires the Phase 4 labelled corpus and a sealed test split. Phase 5 production
+hardening is tracked in `docs/execution-roadmap.md`.
 
 ## Running it locally
 
@@ -42,7 +46,7 @@ means all three dependencies answered; a 503 names the one that did not.
 | `make down` | Stop it |
 | `make logs` | Follow the API log |
 | `make test` | All four suites below |
-| `make test-api` | API tests, inside the container |
+| `make test-api` | API tests, on the host against the stack's published ports |
 | `make test-integrity` | Integrity package tests, on the host |
 | `make test-worker` | Worker pipeline tests, on the host |
 | `make test-web` | Frontend tests |

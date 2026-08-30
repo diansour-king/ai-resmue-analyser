@@ -48,6 +48,27 @@ async def attach_request_id(
     return response
 
 
+@app.middleware("http")
+async def security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Baseline hardening headers on every response.
+
+    The browser only ever reaches this API through the Next.js BFF proxy, but the headers
+    are cheap and cover the case where the API is exposed directly. HSTS is withheld outside
+    production because it would pin `localhost` to HTTPS in a developer's browser.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    if get_settings().environment == "production":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Give every error one shape, so the frontend has one error component to build.

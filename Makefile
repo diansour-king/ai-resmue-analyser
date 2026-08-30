@@ -17,11 +17,13 @@ logs:
 
 test: test-api test-integrity test-worker test-web
 
+# Each suite is a separate pytest run on the host against the stack's published ports. All
+# three tests directories share the name `tests`, so a single invocation from the repo root
+# cannot tell their conftest modules apart; and `api/tests` imports `careerlayer_worker`,
+# which the API image deliberately does not carry. The stack must be up (`make dev`).
 test-api:
-	$(COMPOSE) exec api pytest /srv/api
+	pytest api/tests
 
-# Each suite is a separate pytest run. All three have a directory called tests, so a single
-# invocation from the repo root cannot tell their conftest modules apart.
 test-integrity:
 	pytest packages/integrity/tests
 
