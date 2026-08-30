@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { AsyncState } from "@/components/AsyncState";
+import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import type { ResumeSummary } from "@/lib/types";
 
@@ -50,28 +51,47 @@ export default function OverviewPage() {
         emptyBody="Upload a resume and CareerLayer will show you what it found, where it found it, and why it matters."
         onRetry={load}
       >
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-          <Tile label="Resumes" value={resumes?.length ?? 0} />
-          <Tile label="Analysed" value={analysed} />
-          <Tile label="In progress" value={working} />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+          <Tile label="Resumes" value={resumes?.length ?? 0} icon="description" accent />
+          <Tile label="Analysed" value={analysed} icon="task_alt" />
+          <Tile label="In progress" value={working} icon="pending" />
         </div>
       </AsyncState>
 
       <Link
         href="/app/resume/upload"
-        className="inline-block rounded-lg bg-primary px-5 py-3 text-label-md text-on-primary"
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-label-md text-on-primary transition-colors hover:bg-primary-container"
       >
+        <Icon name="upload_file" className="text-xl" />
         Upload a resume
       </Link>
     </div>
   );
 }
 
-function Tile({ label, value }: { label: string; value: number }) {
+function Tile({
+  label,
+  value,
+  icon,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-surface-container-highest bg-surface-container-lowest p-5 shadow-ocean">
-      <span className="text-label-md text-secondary">{label}</span>
-      <span className="mt-2 block font-display text-display text-on-surface">{value}</span>
+    <div className="group relative overflow-hidden rounded-xl border border-surface-container-highest bg-surface-container-lowest p-5 shadow-ocean transition-colors hover:border-primary-container/40">
+      <div className="flex items-start justify-between">
+        <span className="text-label-md text-secondary">{label}</span>
+        <Icon name={icon} className="text-xl text-primary-fixed-dim" />
+      </div>
+      <span className="mt-3 block font-display text-display text-on-surface">{value}</span>
+      {accent ? (
+        <div className="absolute bottom-0 left-0 h-1 w-full bg-primary/15">
+          <div className="h-full bg-primary" style={{ width: `${value > 0 ? 100 : 0}%` }} />
+        </div>
+      ) : null}
     </div>
   );
 }

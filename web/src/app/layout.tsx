@@ -25,6 +25,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Sora:wght@400;600;700&display=swap"
         />
+        {/* Material Symbols Outlined — the icon set the Stitch screens are drawn with.
+            display=block, not swap: an icon font must not flash its ligature names
+            ("dashboard", "description") as fallback text while it loads. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+        />
       </head>
       <body>{children}</body>
     </html>
