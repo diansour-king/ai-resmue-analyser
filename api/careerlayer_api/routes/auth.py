@@ -102,7 +102,7 @@ async def verify(payload: VerifyRequest, response: Response, session: DbSession)
         max_age=settings.session_ttl_hours * 3600,
         httponly=True,
         samesite="lax",
-        secure=not settings.expose_login_links,
+        secure=settings.session_cookie_secure,
         path="/",
     )
     log("session_started", user_id=str(user.id))
@@ -126,7 +126,7 @@ async def log_out(request: Request, response: Response, session: DbSession) -> N
         path="/",
         httponly=True,
         samesite="lax",
-        secure=not settings.expose_login_links,
+        secure=settings.session_cookie_secure,
     )
 
 

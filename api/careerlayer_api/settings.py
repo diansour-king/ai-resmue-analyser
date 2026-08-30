@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +9,21 @@ class Settings(BaseSettings):
 
     database_url: str
     redis_url: str
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        """Accept the bare URL that managed Postgres providers hand out.
+
+        Render, Heroku and Fly all emit `postgres://` or `postgresql://` with no driver.
+        The API needs asyncpg; the worker rewrites that to psycopg for its sync engine.
+        A URL that already names a driver is left untouched.
+        """
+        if value.startswith("postgres://"):
+            value = "postgresql://" + value[len("postgres://") :]
+        if value.startswith("postgresql://"):
+            value = "postgresql+asyncpg://" + value[len("postgresql://") :]
+        return value
 
     # Seconds. A readiness probe that outlives the orchestrator's own probe timeout is
     # reported as a crashed container rather than as a dependency outage, which sends
@@ -23,6 +39,18 @@ class Settings(BaseSettings):
     session_cookie_name: str = "careerlayer_session"
     session_ttl_hours: int = 24 * 14
     login_token_ttl_minutes: int = 15
+
+    # Whether the session cookie carries the Secure flag. Left unset it follows the
+    # environment (off in development, where the flow runs over plain http). Set it
+    # explicitly on any HTTPS deployment that still needs `environment=development`
+    # for the returned sign-in link.
+    cookie_secure: bool | None = None
+
+    @field_validator("cookie_secure", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        """An empty env var (`COOKIE_SECURE=`) means "not set", not a parse error."""
+        return None if value == "" else value
 
     # Both caps are enforced before the file is stored or parsed further. A 20MB, 40-page
     # ceiling covers every real resume and bounds what one request can cost the worker.
@@ -56,6 +84,12 @@ class Settings(BaseSettings):
     @property
     def expose_login_links(self) -> bool:
         return self.environment == "development"
+
+    @property
+    def session_cookie_secure(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return not self.expose_login_links
 
 
 @lru_cache

@@ -129,6 +129,24 @@ async def test_session_cookie_attributes(client: AsyncClient) -> None:
     assert "samesite=lax" in cookie_lower
     assert "path=/" in cookie_lower
     assert "max-age=" in cookie_lower
+    # Development runs over plain http, so the cookie cannot be Secure by default.
+    assert "secure" not in cookie_lower
+
+
+async def test_cookie_secure_override_is_independent_of_environment(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An HTTPS deployment can keep `environment=development` for the returned link
+    and still set `COOKIE_SECURE=true` so the session cookie carries Secure."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "cookie_secure", True)
+
+    email = f"user-{uuid.uuid4().hex[:8]}@example.com"
+    issued = await client.post("/v1/auth/signup", json={"email": email})
+    token = issued.json()["login_url"].split("token=")[1]
+    verified = await client.post("/v1/auth/verify", json={"token": token})
+
+    assert "secure" in verified.headers.get("set-cookie", "").lower()
 
 
 async def test_production_environment_does_not_expose_login_token(

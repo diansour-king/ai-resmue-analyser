@@ -1,0 +1,116 @@
+# Render Blueprint for CareerLayer.
+#
+# Creates: a managed Postgres, a managed Key Value (Redis), and three services built from
+# the Dockerfiles already in this repo (API, RQ worker, Next.js web).
+#
+# Object storage is NOT part of this blueprint. Render has no S3 service; create a bucket
+# on any S3-compatible provider (Cloudflare R2 is the cheapest for a small project) and
+# fill in the four S3_* values marked `sync: false` in the Render dashboard.
+#
+# See docs/deployment.md for the click-through.
+
+databases:
+  - name: careerlayer-db
+    plan: free           # free Postgres is deleted after 30 days; move to a paid plan to keep it
+    postgresMajorVersion: "16"
+
+services:
+  # ---------------------------------------------------------------- Redis / queue + sessions
+  - type: keyvalue
+    name: careerlayer-redis
+    plan: free
+    ipAllowList: []       # reachable only from other services in this blueprint
+    maxmemoryPolicy: noeviction   # the RQ job queue must not have entries evicted
+
+  # ---------------------------------------------------------------- FastAPI
+  - type: web
+    name: careerlayer-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    # The image CMD runs uvicorn with --reload for local development. Production listens
+    # on Render's injected $PORT with no reloader.
+    dockerCommand: uvicorn careerlayer_api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/ready
+    # Runs against the new release's image before it receives traffic.
+    preDeployCommand: alembic -c /srv/api/alembic.ini upgrade head
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: careerlayer-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: careerlayer-redis
+          property: connectionString
+      # Demo auth: `development` returns the magic-link in the API response so anyone can
+      # sign in without a mail server. COOKIE_SECURE re-adds the Secure flag that
+      # `development` would otherwise drop, since Render serves HTTPS.
+      - key: ENVIRONMENT
+        value: development
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: LLM_DATA_PROCESSING_MODE
+        value: disabled
+      # --- object storage: set these in the dashboard (Cloudflare R2 shown) -------------
+      - key: S3_ENDPOINT_URL
+        sync: false        # https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false        # e.g. careerlayer-resumes
+      - key: S3_REGION
+        value: auto         # R2 uses "auto"; for AWS use the bucket's region
+
+  # ---------------------------------------------------------------- RQ worker (OCR + LLM)
+  - type: worker
+    name: careerlayer-worker
+    runtime: docker
+    plan: starter          # OCR + page rendering needs more than the free instance memory
+    dockerfilePath: ./worker/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: careerlayer-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: careerlayer-redis
+          property: connectionString
+      - key: ENVIRONMENT
+        value: development
+      - key: LLM_DATA_PROCESSING_MODE
+        value: disabled
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+
+  # ---------------------------------------------------------------- Next.js (public entry)
+  - type: web
+    name: careerlayer-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./web/Dockerfile
+    dockerContext: .
+    dockerCommand: npx next start -p $PORT
+    envVars:
+      # The browser only ever talks to this service; /v1/* is proxied here to the API.
+      # Set to the API service's URL once it is live, e.g.
+      # https://careerlayer-api.onrender.com
+      - key: API_ORIGIN
+        sync: false
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"

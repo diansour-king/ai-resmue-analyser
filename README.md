@@ -26,6 +26,12 @@ Phase 3 ships the matching workflow end to end. It does not yet quote an accurac
 that requires the Phase 4 labelled corpus and a sealed test split. Phase 5 production
 hardening is tracked in `docs/execution-roadmap.md`.
 
+## Deploying
+
+`render.yaml` is a Render Blueprint that stands up Postgres, Redis, the API, the worker and
+the web app. See `docs/deployment.md` for the walk-through, including the S3-compatible
+bucket it needs and the demo-auth trade-off.
+
 ## Running it locally
 
 Requires Docker and GNU make. The integrity package additionally needs the `tesseract-ocr`
