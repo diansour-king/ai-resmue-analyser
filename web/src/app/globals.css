@@ -50,4 +50,40 @@
     backdrop-filter: blur(12px);
     background-color: rgb(255 255 255 / 0.8);
   }
+
+  /* Deep-ocean backdrop for the landing hero. The Stitch design plays an underwater video
+     here; this is the asset-free stand-in — layered currents that drift slowly. */
+  .ocean-deep {
+    background-color: #031427;
+    background-image:
+      radial-gradient(60% 50% at 15% 20%, rgba(0, 99, 124, 0.35) 0%, transparent 60%),
+      radial-gradient(45% 45% at 85% 15%, rgba(45, 130, 160, 0.28) 0%, transparent 55%),
+      radial-gradient(70% 60% at 75% 90%, rgba(2, 40, 70, 0.9) 0%, transparent 65%),
+      radial-gradient(50% 50% at 30% 100%, rgba(0, 60, 80, 0.4) 0%, transparent 60%);
+    background-size: 200% 200%;
+    animation: oceanDrift 24s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes oceanDrift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      100% 100%,
+      0% 100%;
+  }
+  100% {
+    background-position:
+      20% 15%,
+      75% 20%,
+      80% 80%,
+      15% 85%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocean-deep {
+    animation: none;
+  }
 }

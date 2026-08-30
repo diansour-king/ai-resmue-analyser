@@ -3,41 +3,29 @@ import Link from "next/link";
 /**
  * The landing page, ported from design/stitch_careerlayer_ai_intelligence/careerlayer_landing_page.
  *
- * Deliberately unchanged: the dark cinematic composition, the gradient scrim over the video,
- * the staggered fadeSlideUp cascade and the navigation style are all as approved. The only
- * edits are turning the two dead buttons into real links.
+ * The Stitch composition is kept — the staggered fadeSlideUp cascade, the eyebrow, the
+ * navigation style. The design plays an underwater video behind the hero; rather than ship
+ * a heavy binary, the backdrop is the asset-free `.ocean-deep` gradient (see globals.css)
+ * with the same dark scrim over it.
  *
- * This is the only dark screen in the product. The application is the light ocean experience
- * and the two are never merged.
+ * This is the only dark screen in the product. The application is the light ocean
+ * experience and the two are never merged.
  */
 export default function LandingPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-night text-night-on-surface">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        poster="/landing-poster.jpg"
-        className="absolute inset-0 z-0 h-full w-full object-cover"
-        style={{ objectPosition: "70% center" }}
-      >
-        <source src="/landing.mp4" type="video/mp4" />
-      </video>
-
+    <main className="ocean-deep relative min-h-screen overflow-hidden text-night-on-surface">
       <div
         className="pointer-events-none absolute inset-0 z-[1] hidden md:block"
         style={{
           background:
-            "linear-gradient(90deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0) 75%)",
+            "linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 45%, rgba(0,0,0,0.05) 75%)",
         }}
       />
       <div
         className="pointer-events-none absolute inset-0 z-[1] md:hidden"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.18) 45%, rgba(0,0,0,0) 75%)",
+            "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.1) 75%)",
         }}
       />
 
@@ -68,9 +56,10 @@ export default function LandingPage() {
           </p>
           <Link
             href="/signup"
-            className="inline-flex animate-fadeSlideUp items-center justify-center rounded bg-white px-8 py-4 font-landing text-body-lg font-medium text-night transition-transform duration-200 hover:scale-105 [animation-delay:900ms] [opacity:0]"
+            className="inline-flex animate-fadeSlideUp items-center justify-center gap-2 rounded bg-white px-8 py-4 font-landing text-body-lg font-medium text-night transition-transform duration-200 hover:scale-105 [animation-delay:900ms] [opacity:0]"
           >
             ANALYZE MY RESUME
+            <span className="material-symbols-outlined text-xl">arrow_forward</span>
           </Link>
         </div>
       </div>
