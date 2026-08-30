@@ -58,6 +58,12 @@ services:
         value: "true"
       - key: LLM_DATA_PROCESSING_MODE
         value: disabled
+      # Set to false in the dashboard if this instance runs out of memory. The worker image
+      # carries PyMuPDF and Tesseract and rendering a page at 200 DPI is memory-hungry; on a
+      # 512 MB free instance that can OOM the container and take the API down with it.
+      # false keeps sign-in and browsing working while uploads stay queued.
+      - key: RUN_WORKER
+        value: "true"
       # --- object storage: set these in the dashboard --------------------------------------
       - key: S3_ENDPOINT_URL
         sync: false   # Supabase: https://<ref>.supabase.co/storage/v1/s3

@@ -115,9 +115,26 @@ synthetic data; do not put anything real behind it. To close this, implement
 - Free web services **sleep after ~15 min idle**; the next request takes ~30–60 s and, for
   the API box, that is also when queued resume/JD jobs get processed.
 - Free Postgres is **deleted after 30 days** — upgrade to keep the data.
-- The free instance has 512 MB RAM. A very large PDF (many pages, heavy OCR) can OOM the
-  worker; the job is marked failed and is safe to re-run. Split the worker onto `starter`
-  if this happens often.
+- The free instance has 512 MB RAM, shared by uvicorn *and* the RQ worker. Rendering a page
+  at 200 DPI is memory-hungry, and an OOM kills the whole container, not just the job — the
+  service then reports "Application loading" until it restarts.
+
+### If the API is unreachable or stuck on "Application loading"
+
+`careerlayer-api → Logs` and look for the `[start-web]` lines. They name the failing step
+directly:
+
+| Log line | Meaning | Fix |
+| --- | --- | --- |
+| `migration attempt N failed` | the database was not reachable yet | usually self-heals; if it hits 5 attempts, check the database is not suspended |
+| `ERROR migrations failed after 5 attempts` | the database is down or the URL is wrong | check `careerlayer-db` is live |
+| `starting uvicorn` then silence, repeatedly | the container is being killed — almost always OOM | set `RUN_WORKER=false` (below) |
+
+**`RUN_WORKER=false`** on `careerlayer-api` drops the RQ worker and leaves only the API in
+the container. Sign-in, browsing and job-description entry keep working; resume uploads stay
+queued until a worker exists. It is the fastest way to get a wedged instance serving again.
+The real fix is a separate `type: worker` service on `plan: starter` (~$7/mo), which is what
+the blueprint comments describe.
 
 ## LLM (optional)
 
