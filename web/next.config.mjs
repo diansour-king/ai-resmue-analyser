@@ -1,24 +1,25 @@
 /** @type {import('next').NextConfig} */
 
-// Where the /v1 proxy sends requests, in order of preference:
-//   1. API_ORIGIN, set explicitly by whoever deployed this.
-//   2. On Render (which sets RENDER=true in every service), the API service's public URL.
-//      This is a safety net, not the intended path: a Render *code* deploy does not re-read
-//      render.yaml's env vars — only a blueprint sync does — so a service can end up running
-//      new code with no API_ORIGIN and silently proxy to a hostname that does not resolve.
-//      Change this if the API service is ever renamed.
-//   3. The docker-compose service name, for `make dev` locally.
-const DEV_COMPOSE_ORIGIN = "http://api:8000";
-const RENDER_API_ORIGIN = "https://careerlayer-api.onrender.com";
+// Where the /v1 proxy sends requests.
+//
+// Every environment that is not the deployed one sets API_ORIGIN explicitly:
+// infra/docker-compose.yml passes http://api:8000 to the web service. So the default here
+// is only ever reached on the Render deployment, and it is the API service's public URL.
+//
+// It is a literal rather than an env var on purpose. A Render *code* deploy does not
+// re-read render.yaml's env vars — only a blueprint sync does — so a service can ship new
+// code with API_ORIGIN still unset and proxy every /v1 request to a hostname that does not
+// resolve, which fails as an opaque 500. A default that is correct for the deployment
+// cannot drift that way. Change this line if the API service is renamed.
+const DEFAULT_API_ORIGIN = "https://careerlayer-api.onrender.com";
 
-const apiOrigin =
-  process.env.API_ORIGIN ?? (process.env.RENDER ? RENDER_API_ORIGIN : DEV_COMPOSE_ORIGIN);
+const apiOrigin = process.env.API_ORIGIN ?? DEFAULT_API_ORIGIN;
 
-// Printed once at boot. When the proxy 500s, the first question is always "which origin did
-// it resolve to", and this puts the answer in the deploy log instead of in a guess.
+// Printed once at boot and once per build. When the proxy 500s, the first question is
+// always "which origin did it resolve to", and this puts the answer in the log.
 console.log(
   `[careerlayer-web] proxying /v1/* to ${apiOrigin}` +
-    (process.env.API_ORIGIN ? " (from API_ORIGIN)" : " (fallback — API_ORIGIN is not set)"),
+    (process.env.API_ORIGIN ? " (from API_ORIGIN)" : " (built-in default)"),
 );
 
 const config = {

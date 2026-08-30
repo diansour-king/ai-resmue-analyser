@@ -80,8 +80,9 @@ services:
     dockerCommand: npx next start -p $PORT
     envVars:
       # The browser only ever talks to this service; /v1/* is proxied server-side to the
-      # API. next.config.mjs reads this at boot, so a change needs a web redeploy. If you
-      # renamed the API service, change this to its URL.
+      # API. Redundant with the default in next.config.mjs, and kept only so the wiring is
+      # visible here — the default is what actually holds, because a code deploy does not
+      # re-read this file. See the note in docs/deployment.md.
       - key: API_ORIGIN
         value: https://careerlayer-api.onrender.com
       - key: NEXT_TELEMETRY_DISABLED

@@ -70,10 +70,20 @@ In the Render dashboard:
 
 - **careerlayer-api → Environment** → set `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`,
   `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION` from step 1.
-- **careerlayer-web → Environment** → set `API_ORIGIN` to the API service's URL, shown on
-  its service page, e.g. `https://careerlayer-api.onrender.com`.
+`careerlayer-web` needs nothing: `web/next.config.mjs` defaults the `/v1` proxy target to
+`https://careerlayer-api.onrender.com`. Set `API_ORIGIN` there only if the API service is
+renamed.
 
-Then **Manual Deploy → Deploy latest commit** on both services.
+Then **Manual Deploy → Deploy latest commit** on the API service.
+
+> **Why the proxy target is a literal in the source and not a blueprint env var.** A Render
+> *code* deploy rebuilds from the new commit but does not re-read `render.yaml`'s env vars —
+> only a blueprint **sync** does. A service can therefore ship new code with `API_ORIGIN`
+> still unset and proxy every `/v1` request to the compose hostname `api:8000`, which does
+> not resolve on Render and surfaces as an opaque `500 Internal Server Error` on sign-in.
+> A default that is correct for the deployment cannot drift that way. `next start` re-reads
+> the config at boot, so `API_ORIGIN` still overrides it — which is how compose keeps
+> pointing at `http://api:8000` locally.
 
 ## 4. Verify
 
