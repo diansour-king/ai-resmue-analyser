@@ -46,35 +46,97 @@ export class ApiError extends Error {
 
 type ErrorEnvelope = { error?: { code?: string; message?: string }; request_id?: string };
 
+/**
+ * Statuses that mean the request never reached the application.
+ *
+ * The deployment runs the web app and the API as two separate free instances, each of which
+ * sleeps after ~15 minutes idle and takes up to a minute to wake. A visitor's first request
+ * wakes the web app, whose proxy then hits an API that is still asleep, and the gateway
+ * answers 502 before the API is listening. Retrying is safe precisely because the request
+ * did not arrive: nothing was executed to be executed twice.
+ */
+const COLD_START_STATUS = new Set([502, 503, 504]);
+
+/** Roughly 75s of patience, which covers a Render free instance cold start. */
+const COLD_START_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 10_000, 10_000, 10_000, 10_000, 10_000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Called when a request is being retried because the server appears to be waking up, so the
+ * UI can say so rather than leaving a button spinning for a minute with no explanation.
+ */
+let onColdStart: ((waking: boolean) => void) | null = null;
+
+export function setColdStartListener(listener: ((waking: boolean) => void) | null): void {
+  onColdStart = listener;
+}
+
+/** Wake the API without blocking the caller. Fire this when an entry screen mounts so the
+ *  instance is already listening by the time someone submits a form. */
+export function warmUp(): void {
+  void fetch("/v1/health", { method: "GET", cache: "no-store" }).catch(() => {});
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(path, {
-      ...init,
-      // Same-origin: /v1 is proxied to the API by next.config.ts, which is what lets the
-      // session cookie work without CORS and without the browser ever seeing the API host.
-      credentials: "same-origin",
-      headers: { Accept: "application/json", ...(init.headers ?? {}) },
-    });
-  } catch {
-    throw new ApiError(0, "network", "Could not reach CareerLayer. Check your connection.", null);
+  let notifiedColdStart = false;
+
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response | null = null;
+    try {
+      response = await fetch(path, {
+        ...init,
+        // Same-origin: /v1 is proxied to the API by next.config.ts, which is what lets the
+        // session cookie work without CORS and without the browser ever seeing the API host.
+        credentials: "same-origin",
+        headers: { Accept: "application/json", ...(init.headers ?? {}) },
+      });
+    } catch {
+      // A network-level failure is indistinguishable from a gateway that is not up yet, so
+      // it gets the same treatment.
+      response = null;
+    }
+
+    const isColdStart = response === null || COLD_START_STATUS.has(response.status);
+    if (isColdStart && attempt < COLD_START_BACKOFF_MS.length) {
+      if (!notifiedColdStart) {
+        notifiedColdStart = true;
+        onColdStart?.(true);
+      }
+      await sleep(COLD_START_BACKOFF_MS[attempt]);
+      continue;
+    }
+
+    if (notifiedColdStart) onColdStart?.(false);
+
+    if (response === null) {
+      throw new ApiError(0, "network", "Could not reach CareerLayer. Check your connection.", null);
+    }
+    if (isColdStart) {
+      throw new ApiError(
+        response.status,
+        "server_waking",
+        "CareerLayer is still starting up. Give it a moment and try again.",
+        response.headers.get("x-request-id"),
+      );
+    }
+
+    if (response.status === 204) return undefined as T;
+
+    const requestId = response.headers.get("x-request-id");
+    const body: unknown = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const envelope = (body ?? {}) as ErrorEnvelope;
+      throw new ApiError(
+        response.status,
+        envelope.error?.code ?? "error",
+        envelope.error?.message ?? "Something went wrong.",
+        envelope.request_id ?? requestId,
+      );
+    }
+    return body as T;
   }
-
-  if (response.status === 204) return undefined as T;
-
-  const requestId = response.headers.get("x-request-id");
-  const body: unknown = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const envelope = (body ?? {}) as ErrorEnvelope;
-    throw new ApiError(
-      response.status,
-      envelope.error?.code ?? "error",
-      envelope.error?.message ?? "Something went wrong.",
-      envelope.request_id ?? requestId,
-    );
-  }
-  return body as T;
 }
 
 function postJson<T>(path: string, payload: unknown): Promise<T> {

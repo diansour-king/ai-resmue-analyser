@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, setColdStartListener, warmUp } from "@/lib/api";
 
 /**
  * Sign-in and sign-up are the same interaction: type an email, receive a one-time link.
@@ -28,6 +28,15 @@ export function EmailLinkForm({
   const [sent, setSent] = useState(false);
   const [devLink, setDevLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [waking, setWaking] = useState(false);
+
+  // The deployment sleeps when idle. Waking the API as soon as this screen is open means it
+  // is usually listening by the time anyone finishes typing an address.
+  useEffect(() => {
+    warmUp();
+    setColdStartListener(setWaking);
+    return () => setColdStartListener(null);
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -88,6 +97,12 @@ export function EmailLinkForm({
               >
                 {sending ? "Sending…" : "Email me a link"}
               </button>
+              {waking ? (
+                <p aria-live="polite" className="text-body-md text-on-surface-variant">
+                  Waking the server up. The free instance sleeps when idle, so the first
+                  request can take up to a minute.
+                </p>
+              ) : null}
               {error ? (
                 <p role="alert" className="text-body-md text-error">
                   {error}
